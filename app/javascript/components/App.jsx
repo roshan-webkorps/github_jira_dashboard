@@ -112,6 +112,47 @@ const App = () => {
     }
   }
 
+  const getTicketStatusData = () => {
+    if (!dashboardData?.charts_data?.tickets) {
+      return {
+        labels: ['Loading...'],
+        datasets: [{ data: [1], backgroundColor: ['rgba(52, 152, 219, 0.6)'] }]
+      }
+    }
+    
+    const { todo, in_progress, done, other } = dashboardData.charts_data.tickets
+    const labels = ['To Do', 'In Progress', 'Done']
+    const data = [todo, in_progress, done]
+    
+    // Add "Other" if there are tickets with other statuses
+    if (other > 0) {
+      labels.push('Other')
+      data.push(other)
+    }
+    
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: [
+            'rgba(231, 76, 60, 0.6)',   // Red for To Do
+            'rgba(241, 196, 15, 0.6)',  // Yellow for In Progress  
+            'rgba(46, 204, 113, 0.6)',  // Green for Done
+            'rgba(155, 89, 182, 0.6)',  // Purple for Other
+          ],
+          borderColor: [
+            'rgba(231, 76, 60, 1)',
+            'rgba(241, 196, 15, 1)',
+            'rgba(46, 204, 113, 1)',
+            'rgba(155, 89, 182, 1)',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    }
+  }
+
   const chartOptions = {
     responsive: true,
     plugins: {
@@ -193,12 +234,18 @@ const App = () => {
               <p className="stat-number">{dashboardData.summary.total_pull_requests}</p>
               <p className="stat-label">in {timeframeOptions.find(t => t.value === timeframe)?.label}</p>
             </div>
+            
+            <div className="stat-card">
+              <h3>Jira Tickets</h3>
+              <p className="stat-number">{dashboardData.summary.total_tickets || 0}</p>
+              <p className="stat-label">in {timeframeOptions.find(t => t.value === timeframe)?.label}</p>
+            </div>
           </div>
         )}
 
         <div className="charts-section">
           <h2>Analytics Overview</h2>
-          <div className="charts-grid">
+          <div className="charts-grid-three">
             <div className="chart-container">
               <h3>Commit Activity</h3>
               <Bar data={getCommitsChartData()} options={chartOptions} />
@@ -207,6 +254,11 @@ const App = () => {
             <div className="chart-container">
               <h3>Pull Request Status</h3>
               <Doughnut data={getPRStatusData()} options={chartOptions} />
+            </div>
+            
+            <div className="chart-container">
+              <h3>Jira Ticket Status</h3>
+              <Doughnut data={getTicketStatusData()} options={chartOptions} />
             </div>
           </div>
         </div>

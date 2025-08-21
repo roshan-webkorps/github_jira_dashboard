@@ -12,13 +12,15 @@ class DashboardController < ApplicationController
       message: "Dashboard API is working!",
       charts_data: {
         commits: get_commits_data(timeframe_start, timeframe),
-        pull_requests: get_pull_requests_data(timeframe_start)
+        pull_requests: get_pull_requests_data(timeframe_start),
+        tickets: get_tickets_data(timeframe_start)
       },
       summary: {
         total_repositories: Repository.count,
         total_developers: Developer.count,
         total_commits: Commit.where('committed_at >= ?', timeframe_start).count,
-        total_pull_requests: PullRequest.where('opened_at >= ?', timeframe_start).count
+        total_pull_requests: PullRequest.where('opened_at >= ?', timeframe_start).count,
+        total_tickets: Ticket.where('created_at_jira >= ?', timeframe_start).count
       },
       developer_stats: get_developer_stats(timeframe_start),
       repo_stats: get_repository_stats(timeframe_start)
@@ -173,6 +175,26 @@ class DashboardController < ApplicationController
     end
     
     { labels: labels, data: data }
+  end
+  
+  def get_tickets_data(since)
+    tickets = Ticket.where('created_at_jira >= ?', since)
+    
+    if tickets.empty?
+      return { todo: 0, in_progress: 0, done: 0 }
+    end
+    
+    # Group by common status categories
+    todo_statuses = ['To Do', 'Open', 'New', 'Backlog']
+    in_progress_statuses = ['In Progress', 'In Review', 'Testing', 'Code Review']
+    done_statuses = ['Done', 'Closed', 'Resolved', 'Complete']
+    
+    {
+      todo: tickets.where(status: todo_statuses).count,
+      in_progress: tickets.where(status: in_progress_statuses).count,
+      done: tickets.where(status: done_statuses).count,
+      other: tickets.where.not(status: todo_statuses + in_progress_statuses + done_statuses).count
+    }
   end
   
   def get_repository_stats(since)

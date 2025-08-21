@@ -23,18 +23,4 @@ namespace :github do
       puts "  - Pull Requests: #{result[:pull_requests]}"
     end
   end
-
-  desc "Sync only repositories"
-  task sync_repos: :environment do
-    puts "Syncing repositories..."
-    
-    sync_service = GithubSyncService.new
-    result = sync_service.sync_repositories
-    
-    if result[:error]
-      puts "Failed: #{result[:error]}"
-    else
-      puts "Synced #{result[:count]} repositories"
-    end
-  end
 end

@@ -28,13 +28,33 @@ class GithubSyncService
   def sync_repositories
     Rails.logger.info "Syncing repositories..."
     
+    # Define the specific repositories we want to sync
+    target_repos = {
+      "339825464" => "ap-kubernetes-helm",
+      "120736547" => "asset_panda_web_app", 
+      "211844555" => "ap_audit_api",
+      "269534419" => "ap-reservation-api",
+      "196480441" => "ap-barcode-api",
+      "511952365" => "help-desk",
+      "288275646" => "ap_jobs_service",
+      "173906727" => "asset_panda_zendesk_integration",
+      "463112505" => "assetpanda-jira-app",
+      "225449659" => "panda3"
+    }
+    
     repos = @github.fetch_user_repos
     return { error: repos[:error] } if repos.is_a?(Hash) && repos[:error]
 
+    # Filter to only the repositories we want
+    filtered_repos = repos.select do |repo_data|
+      target_repos.key?(repo_data['id'].to_s)
+    end
+
+    Rails.logger.info "  Found #{repos.count} total repositories, filtering to #{filtered_repos.count} target repositories"
     count = 0
     repositories = []
 
-    repos.each do |repo_data|
+    filtered_repos.each do |repo_data|
       repo = Repository.find_or_create_by(github_id: repo_data['id'].to_s) do |r|
         r.name = repo_data['name']
         r.full_name = repo_data['full_name']
@@ -53,10 +73,19 @@ class GithubSyncService
       end
     end
 
+    # Log any missing repositories
+    synced_ids = filtered_repos.map { |r| r['id'].to_s }
+    missing_repos = target_repos.reject { |id, name| synced_ids.include?(id) }
+    if missing_repos.any?
+      Rails.logger.warn "  Missing repositories (not found in GitHub response):"
+      missing_repos.each { |id, name| Rails.logger.warn "    - #{name} (#{id})" }
+    end
+
+    Rails.logger.info "Synced #{count} repositories total"
     { count: count, repositories: repositories }
   end
 
-  def sync_repository_commits(repository, since = 1.month.ago)
+  def sync_repository_commits(repository, since = 1.year.ago)
     Rails.logger.info "  Syncing commits for #{repository.full_name}..."
     
     commits = @github.fetch_repo_commits(repository.owner, repository.name, since)
@@ -87,7 +116,7 @@ class GithubSyncService
     Rails.logger.info "    ✓ Synced #{count} commits"
   end
 
-  def sync_repository_pull_requests(repository, since = 1.month.ago)
+  def sync_repository_pull_requests(repository, since = 1.year.ago)
     Rails.logger.info "  Syncing pull requests for #{repository.full_name}..."
     
     prs = @github.fetch_repo_pull_requests(repository.owner, repository.name, 'all', since)

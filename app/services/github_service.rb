@@ -13,46 +13,88 @@ class GithubService
   end
 
   def fetch_user_repos(username = nil)
-    # If no username provided, fetch authenticated user's repos
     endpoint = username ? "/users/#{username}/repos" : "/user/repos"
     
-    response = self.class.get(endpoint, @options.merge(
-      query: { 
-        type: 'all',
-        sort: 'updated',
-        per_page: 100
-      }
-    ))
+    all_repos = []
+    page = 1
+    per_page = 100
     
-    handle_response(response)
+    loop do
+      response = self.class.get(endpoint, @options.merge(
+        query: { 
+          type: 'all',
+          sort: 'updated',
+          per_page: per_page,
+          page: page
+        }
+      ))
+      
+      result = handle_response(response)
+      return result if result.is_a?(Hash) && result[:error]
+      
+      break if result.empty?
+      
+      all_repos.concat(result)
+      page += 1
+    end
+    
+    all_repos
   end
 
   def fetch_repo_commits(owner, repo, since = nil)
     endpoint = "/repos/#{owner}/#{repo}/commits"
-    query = { per_page: 100 }
-    query[:since] = since.iso8601 if since
     
-    response = self.class.get(endpoint, @options.merge(query: query))
-    handle_response(response)
+    all_commits = []
+    page = 1
+    per_page = 100
+    
+    loop do
+      query = { per_page: per_page, page: page }
+      query[:since] = since.iso8601 if since
+      
+      response = self.class.get(endpoint, @options.merge(query: query))
+      result = handle_response(response)
+      return result if result.is_a?(Hash) && result[:error]
+      
+      break if result.empty?
+      
+      all_commits.concat(result)
+      page += 1
+    end
+    
+    all_commits
   end
 
   def fetch_repo_pull_requests(owner, repo, state = 'all', since = nil)
     endpoint = "/repos/#{owner}/#{repo}/pulls"
-    query = { 
-      state: state,
-      sort: 'updated',
-      direction: 'desc',
-      per_page: 100
-    }
     
-    response = self.class.get(endpoint, @options.merge(query: query))
+    all_prs = []
+    page = 1
+    per_page = 100
     
-    # Filter by date if since is provided
-    pulls = handle_response(response)
-    if since && pulls.is_a?(Array)
-      pulls.select { |pr| Time.parse(pr['created_at']) >= since }
+    loop do
+      query = { 
+        state: state,
+        sort: 'updated',
+        direction: 'desc',
+        per_page: per_page,
+        page: page
+      }
+      
+      response = self.class.get(endpoint, @options.merge(query: query))
+      result = handle_response(response)
+      return result if result.is_a?(Hash) && result[:error]
+      
+      break if result.empty?
+      
+      all_prs.concat(result)
+      page += 1
+    end
+    
+    if since && all_prs.is_a?(Array)
+      all_prs.select { |pr| Time.parse(pr['created_at']) >= since }
     else
-      pulls
+      all_prs
     end
   end
 

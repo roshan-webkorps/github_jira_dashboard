@@ -262,6 +262,18 @@ body {
   gap: 30px;
 }
 
+.charts-grid-three {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid-three {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
 .chart-container {
   background: #f8f9fa;
   padding: 20px;
