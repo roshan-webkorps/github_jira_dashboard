@@ -168,11 +168,39 @@ const App = () => {
       </header>
       
       <main className="app-main">
+        {dashboardData?.summary && (
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Active Developers</h3>
+              <p className="stat-number">{dashboardData.summary.total_developers}</p>
+              <p className="stat-label">Contributors</p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Repositories</h3>
+              <p className="stat-number">{dashboardData.summary.total_repositories}</p>
+              <p className="stat-label">Projects</p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Commits</h3>
+              <p className="stat-number">{dashboardData.summary.total_commits}</p>
+              <p className="stat-label">in {timeframeOptions.find(t => t.value === timeframe)?.label}</p>
+            </div>
+            
+            <div className="stat-card">
+              <h3>Pull Requests</h3>
+              <p className="stat-number">{dashboardData.summary.total_pull_requests}</p>
+              <p className="stat-label">in {timeframeOptions.find(t => t.value === timeframe)?.label}</p>
+            </div>
+          </div>
+        )}
+
         <div className="charts-section">
           <h2>Analytics Overview</h2>
           <div className="charts-grid">
             <div className="chart-container">
-              <h3>Commits This Month</h3>
+              <h3>Commit Activity</h3>
               <Bar data={getCommitsChartData()} options={chartOptions} />
             </div>
             
