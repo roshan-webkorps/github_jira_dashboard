@@ -288,7 +288,6 @@ const App = () => {
         <div className="header-content">
           <div className="header-text">
             <h1>GitHub & Jira Dashboard</h1>
-            <p>Development & Project Analytics</p>
           </div>
           
           {/* AI Search Bar */}
