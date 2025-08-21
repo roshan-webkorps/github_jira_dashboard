@@ -135,12 +135,18 @@ const App = () => {
     ]
     
     let colorIndex = 0
-    Object.entries(datasets).forEach(([developerName, data]) => {
-      // Calculate total commits for this developer
-      const totalCommits = data.reduce((sum, count) => sum + count, 0)
+    // Limit to top 6 developers to prevent legend overflow
+    const sortedDevelopers = Object.entries(datasets)
+      .map(([name, data]) => ({ name, data, total: data.reduce((sum, count) => sum + count, 0) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6)
+    
+    sortedDevelopers.forEach(({ name, data, total }) => {
+      // Truncate long names
+      const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name
       
       chartDatasets.push({
-        label: `${developerName} (${totalCommits})`, // Add count to legend
+        label: `${displayName} (${total})`,
         data: data,
         backgroundColor: colors[colorIndex % colors.length],
         borderColor: colors[colorIndex % colors.length].replace('0.6', '1'),
@@ -361,66 +367,161 @@ const App = () => {
         <div className="charts-section">
           <h2>Analytics Overview</h2>
           
-          {/* Commit Activity Chart with Legend */}
-          <div className="commit-section">
-            <div className="chart-container-wide">
+          {/* Two Bar Charts Side by Side */}
+          <div className="charts-grid-two">
+            <div className="chart-container">
               <h3>Commit Activity by Developer</h3>
-              <Bar data={getCommitsChartData()} options={{
-                responsive: true,
-                plugins: {
-                  legend: {
-                    position: 'bottom',
-                    labels: {
-                      padding: 20,
-                      usePointStyle: true,
-                      font: {
-                        size: 14
+              <div className="chart-with-legend">
+                <Bar data={getCommitsChartData()} options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 8,
+                        usePointStyle: true,
+                        font: {
+                          size: 10
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12,
+                      },
+                      maxHeight: 80,
+                    },
+                    tooltip: {
+                      callbacks: {
+                        title: function(context) {
+                          return context[0].label; // Show the week/time period
+                        },
+                        label: function(context) {
+                          const developerName = context.dataset.label.split(' (')[0]; // Remove total from tooltip
+                          return `${developerName}: ${context.parsed.y} commits`;
+                        }
                       }
                     }
                   },
-                },
-                scales: {
-                  x: {
-                    stacked: true,
-                  },
-                  y: {
-                    stacked: true,
-                  },
-                }
-              }} />
-            </div>
-          </div>
-
-          {/* Three Smaller Charts */}
-          <div className="charts-grid-three">
-            <div className="chart-container">
-              <h3>Pull Request Status</h3>
-              <Doughnut data={getPRStatusData()} options={chartOptions} />
-            </div>
-            
-            <div className="chart-container">
-              <h3>Jira Ticket Status</h3>
-              <Doughnut data={getTicketStatusData()} options={chartOptions} />
+                  scales: {
+                    x: {
+                      stacked: true,
+                      ticks: {
+                        font: {
+                          size: 10
+                        }
+                      }
+                    },
+                    y: {
+                      stacked: true,
+                      ticks: {
+                        font: {
+                          size: 10
+                        }
+                      }
+                    },
+                  }
+                }} />
+              </div>
             </div>
             
             <div className="chart-container">
               <h3>Completed Tickets by Developer</h3>
-              <Bar data={getCompletedTicketsData()} options={{
-                responsive: true,
-                plugins: {
-                  legend: {
-                    display: false
+              <div className="chart-with-legend">
+                <Bar data={getCompletedTicketsData()} options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 8,
+                        usePointStyle: true,
+                        font: {
+                          size: 10
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12,
+                      },
+                      maxHeight: 60,
+                    },
                   },
-                },
-                scales: {
-                  x: {
-                    ticks: {
-                      maxRotation: 45,
-                      minRotation: 0
+                  scales: {
+                    x: {
+                      ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        font: {
+                          size: 10
+                        },
+                        callback: function(value, index, values) {
+                          const label = this.getLabelForValue(value);
+                          // Truncate long names
+                          return label.length > 12 ? label.substring(0, 12) + '...' : label;
+                        }
+                      }
+                    },
+                    y: {
+                      ticks: {
+                        font: {
+                          size: 10
+                        }
+                      }
                     }
                   }
-                }
-              }} />
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Two Pie Charts Side by Side */}
+          <div className="charts-grid-two">
+            <div className="chart-container pie-chart-container">
+              <h3>Pull Request Status</h3>
+              <div className="pie-chart-wrapper">
+                <Doughnut data={getPRStatusData()} options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 10,
+                        font: {
+                          size: 11
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        usePointStyle: true
+                      },
+                      maxHeight: 60,
+                    },
+                  }
+                }} />
+              </div>
+            </div>
+            
+            <div className="chart-container pie-chart-container">
+              <h3>Jira Ticket Status</h3>
+              <div className="pie-chart-wrapper">
+                <Doughnut data={getTicketStatusData()} options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 10,
+                        font: {
+                          size: 11
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        usePointStyle: true
+                      },
+                      maxHeight: 60,
+                    },
+                  }
+                }} />
+              </div>
             </div>
           </div>
         </div>
