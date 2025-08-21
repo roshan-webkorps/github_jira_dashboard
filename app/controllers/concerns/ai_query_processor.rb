@@ -14,7 +14,7 @@ module AiQueryProcessor
         results = execute_safe_query(parsed_response['sql'])
         
         # Format results for frontend
-        format_query_results(results, parsed_response)
+        format_query_results(results, parsed_response, user_query)
       else
         { error: "Could not generate a valid query from your request." }
       end
@@ -164,7 +164,7 @@ module AiQueryProcessor
     result.to_a
   end
   
-  def format_query_results(results, ai_response)
+  def format_query_results(results, ai_response, user_query)
     return { error: "No results found" } if results.empty?
     
     chart_type = ai_response['chart_type'] || 'table'
@@ -182,6 +182,7 @@ module AiQueryProcessor
     
     {
       success: true,
+      user_query: user_query,
       description: description,
       chart_type: chart_type,
       data: formatted_data,

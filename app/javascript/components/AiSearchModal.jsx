@@ -66,7 +66,15 @@ const AiSearchModal = ({ isOpen, onClose, result, loading, error }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>🤖 AI Query Results</h3>
+          <div className="modal-title-section">
+            <h3>AI Query Results</h3>
+            {result && result.user_query && (
+              <div className="user-query-display">
+                <span className="query-label">Query:</span>
+                <span className="query-text">"{result.user_query}"</span>
+              </div>
+            )}
+          </div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         
@@ -95,10 +103,6 @@ const AiSearchModal = ({ isOpen, onClose, result, loading, error }) => {
           
           {result && !loading && !error && (
             <>
-              <div className="result-description">
-                <p><strong>{result.description}</strong></p>
-              </div>
-              
               <div className="result-content">
                 {renderChart()}
               </div>
