@@ -109,9 +109,8 @@ module Analytics
     labels = []
     developer_datasets = {}
     
-    # Get time labels
-    (0..6).each do |day|
-      date = since + day.days
+    (6.downto(0)).each do |days_ago|
+      date = Date.current - days_ago.days
       labels << date.strftime('%a')
     end
     
@@ -123,7 +122,12 @@ module Analytics
     
     # Count commits by developer and day
     commits.each do |commit|
-      day_index = ((commit.committed_at.to_date - since.to_date).to_i)
+      commit_date = commit.committed_at.to_date
+      days_ago = (Date.current - commit_date).to_i
+      
+      # Map days_ago to array index (0 = 6 days ago, 6 = today)
+      day_index = 6 - days_ago
+      
       if day_index >= 0 && day_index < 7 && commit.developer
         developer_datasets[commit.developer.name][day_index] += 1
       end
