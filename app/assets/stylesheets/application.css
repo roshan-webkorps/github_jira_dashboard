@@ -14,12 +14,15 @@ body {
   background-color: #f5f5f5;
   color: #333;
   line-height: 1.6;
+  margin: 0;
+  padding: 0;
 }
 
 .app {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 20px;
+  min-height: 100vh;
 }
 
 .app-header {
@@ -28,6 +31,8 @@ body {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   margin-bottom: 30px;
+  margin-left: 20px;
+  margin-right: 20px;
 }
 
 .header-content {
@@ -262,6 +267,26 @@ body {
   gap: 30px;
 }
 
+.commit-section {
+  margin-bottom: 30px;
+}
+
+.chart-container-wide {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-container-wide h3 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+/* Remove unused CSS */
+
 .charts-grid-three {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -271,6 +296,10 @@ body {
 @media (max-width: 1200px) {
   .charts-grid-three {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  .totals-grid {
+    grid-template-columns: 1fr;
   }
 }
 

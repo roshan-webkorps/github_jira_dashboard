@@ -67,44 +67,58 @@ const App = () => {
       }
     }
     
-    const { labels, data } = dashboardData.charts_data.commits
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Commits',
-          data,
-          backgroundColor: 'rgba(52, 152, 219, 0.6)',
-          borderColor: 'rgba(52, 152, 219, 1)',
-          borderWidth: 1,
-        },
-      ],
-    }
+    const { labels, datasets } = dashboardData.charts_data.commits
+    
+    // Convert developer datasets to Chart.js format
+    const chartDatasets = []
+    const colors = [
+      'rgba(52, 152, 219, 0.6)',   // Blue
+      'rgba(46, 204, 113, 0.6)',   // Green  
+      'rgba(241, 196, 15, 0.6)',   // Yellow
+      'rgba(231, 76, 60, 0.6)',    // Red
+      'rgba(155, 89, 182, 0.6)',   // Purple
+      'rgba(230, 126, 34, 0.6)',   // Orange
+    ]
+    
+    let colorIndex = 0
+    Object.entries(datasets).forEach(([developerName, data]) => {
+      // Calculate total commits for this developer
+      const totalCommits = data.reduce((sum, count) => sum + count, 0)
+      
+      chartDatasets.push({
+        label: `${developerName} (${totalCommits})`, // Add count to legend
+        data: data,
+        backgroundColor: colors[colorIndex % colors.length],
+        borderColor: colors[colorIndex % colors.length].replace('0.6', '1'),
+        borderWidth: 1,
+      })
+      colorIndex++
+    })
+    
+    return { labels, datasets: chartDatasets }
   }
 
   const getPRStatusData = () => {
-    if (!dashboardData?.charts_data?.pull_requests) {
+    if (!dashboardData?.charts_data?.pull_requests?.totals) {
       return {
         labels: ['Loading...'],
         datasets: [{ data: [1], backgroundColor: ['rgba(52, 152, 219, 0.6)'] }]
       }
     }
     
-    const { open, merged, closed } = dashboardData.charts_data.pull_requests
+    const { open, closed_merged } = dashboardData.charts_data.pull_requests.totals
     return {
-      labels: ['Open', 'Merged', 'Closed'],
+      labels: ['Open', 'Merged/Closed'],
       datasets: [
         {
-          data: [open, merged, closed],
+          data: [open, closed_merged],
           backgroundColor: [
             'rgba(241, 196, 15, 0.6)',
             'rgba(46, 204, 113, 0.6)',
-            'rgba(231, 76, 60, 0.6)',
           ],
           borderColor: [
             'rgba(241, 196, 15, 1)',
             'rgba(46, 204, 113, 1)',
-            'rgba(231, 76, 60, 1)',
           ],
           borderWidth: 1,
         },
@@ -113,14 +127,14 @@ const App = () => {
   }
 
   const getTicketStatusData = () => {
-    if (!dashboardData?.charts_data?.tickets) {
+    if (!dashboardData?.charts_data?.tickets?.totals) {
       return {
         labels: ['Loading...'],
         datasets: [{ data: [1], backgroundColor: ['rgba(52, 152, 219, 0.6)'] }]
       }
     }
     
-    const { todo, in_progress, done, other } = dashboardData.charts_data.tickets
+    const { todo, in_progress, done, other } = dashboardData.charts_data.tickets.totals
     const labels = ['To Do', 'In Progress', 'Done']
     const data = [todo, in_progress, done]
     
@@ -147,6 +161,32 @@ const App = () => {
             'rgba(46, 204, 113, 1)',
             'rgba(155, 89, 182, 1)',
           ],
+          borderWidth: 1,
+        },
+      ],
+    }
+  }
+
+  const getCompletedTicketsData = () => {
+    if (!dashboardData?.charts_data?.tickets?.developer_completed) {
+      return {
+        labels: ['Loading...'],
+        datasets: [{ label: 'Completed Tickets', data: [0], backgroundColor: 'rgba(46, 204, 113, 0.6)' }]
+      }
+    }
+    
+    const developerCompleted = dashboardData.charts_data.tickets.developer_completed
+    const labels = Object.keys(developerCompleted)
+    const data = Object.values(developerCompleted)
+    
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Completed Tickets',
+          data,
+          backgroundColor: 'rgba(46, 204, 113, 0.6)',
+          borderColor: 'rgba(46, 204, 113, 1)',
           borderWidth: 1,
         },
       ],
@@ -245,12 +285,39 @@ const App = () => {
 
         <div className="charts-section">
           <h2>Analytics Overview</h2>
-          <div className="charts-grid-three">
-            <div className="chart-container">
-              <h3>Commit Activity</h3>
-              <Bar data={getCommitsChartData()} options={chartOptions} />
+          
+          {/* Commit Activity Chart with Legend */}
+          <div className="commit-section">
+            <div className="chart-container-wide">
+              <h3>Commit Activity by Developer</h3>
+              <Bar data={getCommitsChartData()} options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      padding: 20,
+                      usePointStyle: true,
+                      font: {
+                        size: 14
+                      }
+                    }
+                  },
+                },
+                scales: {
+                  x: {
+                    stacked: true,
+                  },
+                  y: {
+                    stacked: true,
+                  },
+                }
+              }} />
             </div>
-            
+          </div>
+
+          {/* Three Smaller Charts */}
+          <div className="charts-grid-three">
             <div className="chart-container">
               <h3>Pull Request Status</h3>
               <Doughnut data={getPRStatusData()} options={chartOptions} />
@@ -259,6 +326,26 @@ const App = () => {
             <div className="chart-container">
               <h3>Jira Ticket Status</h3>
               <Doughnut data={getTicketStatusData()} options={chartOptions} />
+            </div>
+            
+            <div className="chart-container">
+              <h3>Completed Tickets by Developer</h3>
+              <Bar data={getCompletedTicketsData()} options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    display: false
+                  },
+                },
+                scales: {
+                  x: {
+                    ticks: {
+                      maxRotation: 45,
+                      minRotation: 0
+                    }
+                  }
+                }
+              }} />
             </div>
           </div>
         </div>
