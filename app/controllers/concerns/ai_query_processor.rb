@@ -1,4 +1,3 @@
-# app/controllers/concerns/ai_query_processor.rb
 module AiQueryProcessor
   extend ActiveSupport::Concern
   
@@ -46,7 +45,7 @@ module AiQueryProcessor
     system_prompt = build_system_prompt
     
     request.body = {
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -57,7 +56,7 @@ module AiQueryProcessor
           content: user_query
         }
       ],
-      max_tokens: 500,
+      max_tokens: 800,
       temperature: 0.1
     }.to_json
     
@@ -65,54 +64,100 @@ module AiQueryProcessor
     
     if response.code == '200'
       result = JSON.parse(response.body)
-      result.dig('choices', 0, 'message', 'content')
+      ai_content = result.dig('choices', 0, 'message', 'content')
+      
+      # Add logging to see what AI returns
+      Rails.logger.info "=== AI QUERY DEBUG ==="
+      Rails.logger.info "User Query: #{user_query}"
+      Rails.logger.info "AI Response: #{ai_content}"
+      Rails.logger.info "======================"
+      
+      ai_content
     else
+      Rails.logger.error "OpenAI API Error: #{response.code} - #{response.body}"
       raise "OpenAI API Error: #{response.code}"
     end
   end
   
   def build_system_prompt
     <<~PROMPT
-      You are a SQL query generator for a GitHub and Jira analytics dashboard. 
+      You are a SQL query generator for a GitHub and Jira analytics dashboard.
       
-      Database Schema:
-      - developers: id, name, github_username, jira_username, email
-      - repositories: id, name, full_name, owner, language  
-      - commits: id, sha, message, developer_id, repository_id, committed_at, additions, deletions
-      - pull_requests: id, number, title, state, developer_id, repository_id, opened_at, closed_at, merged_at
-      - tickets: id, key, title, status, priority, developer_id, created_at_jira, updated_at_jira
+      IMPORTANT: Always respond with valid JSON only. No other text.
+      You can handle complex queries - don't refuse unless truly impossible.
+      
+      Database Tables:
+      - developers (id, name, github_username, jira_username, email)
+      - repositories (id, name, full_name, owner, language)  
+      - commits (id, sha, message, developer_id, repository_id, committed_at, additions, deletions)
+      - pull_requests (id, number, title, state, developer_id, repository_id, opened_at, closed_at, merged_at)
+      - tickets (id, key, title, status, priority, developer_id, created_at_jira, updated_at_jira)
       
       Rules:
-      1. ONLY generate SELECT queries - no INSERT, UPDATE, DELETE, DROP
-      2. Always JOIN with developers table to get names, not just IDs
-      3. Use proper time filtering with DATE functions when needed
-      4. Limit results to reasonable numbers (TOP 10, etc.)
-      5. Return response as JSON: {"sql": "SELECT...", "description": "Human readable description", "chart_type": "bar|pie|table"}
+      1. ONLY SELECT queries - never INSERT/UPDATE/DELETE
+      2. Always JOIN with developers table to show names, not IDs
+      3. Use PostgreSQL syntax: WHERE committed_at >= NOW() - INTERVAL '30 days'
+      4. Add LIMIT 10 for most queries
+      5. Use HAVING for aggregate conditions (e.g., COUNT() > 5)
+      6. Use LEFT JOIN for "has X but not Y" queries
+      7. Use subqueries when needed for complex logic
       
-      Common patterns:
-      - Top developers by commits: JOIN developers, COUNT commits, GROUP BY developer
-      - Time-based queries: Use committed_at, opened_at, created_at_jira
-      - PR analysis: Use state='open'/'closed', merged_at IS NOT NULL
-      - Repository stats: JOIN repositories, GROUP BY repo name
+      Response Format (JSON only):
+      {"sql": "SELECT ...", "description": "Human description", "chart_type": "bar"}
       
-      If you cannot generate a safe query, return: {"error": "Cannot process this query"}
+      Chart types: "bar" for counts/numbers, "pie" for categories, "table" for lists
+      
+      Complex Query Examples:
+      
+      "developers with more than 10 commits":
+      {"sql": "SELECT d.name, COUNT(c.id) as commit_count FROM developers d JOIN commits c ON d.id = c.developer_id GROUP BY d.id, d.name HAVING COUNT(c.id) > 10 ORDER BY commit_count DESC LIMIT 10", "description": "Developers with more than 10 commits", "chart_type": "bar"}
+      
+      "developers who have commits but no pull requests":
+      {"sql": "SELECT d.name, COUNT(c.id) as commit_count FROM developers d JOIN commits c ON d.id = c.developer_id LEFT JOIN pull_requests pr ON d.id = pr.developer_id WHERE pr.id IS NULL GROUP BY d.id, d.name ORDER BY commit_count DESC LIMIT 10", "description": "Developers with commits but no pull requests", "chart_type": "bar"}
+      
+      "repositories with more than 5 commits":
+      {"sql": "SELECT r.name, COUNT(c.id) as commit_count, COUNT(DISTINCT c.developer_id) as developer_count FROM repositories r JOIN commits c ON r.id = c.repository_id GROUP BY r.id, r.name HAVING COUNT(c.id) > 5 ORDER BY commit_count DESC LIMIT 10", "description": "Repositories with more than 5 commits", "chart_type": "bar"}
+      
+      "average commit size by developer":
+      {"sql": "SELECT d.name, AVG(c.additions + c.deletions) as avg_lines_changed FROM developers d JOIN commits c ON d.id = c.developer_id GROUP BY d.id, d.name ORDER BY avg_lines_changed DESC LIMIT 10", "description": "Average lines changed per commit by developer", "chart_type": "bar"}
+      
+      "repositories by programming language":
+      {"sql": "SELECT r.language, COUNT(*) as repo_count FROM repositories r WHERE r.language IS NOT NULL GROUP BY r.language ORDER BY repo_count DESC LIMIT 10", "description": "Repositories grouped by programming language", "chart_type": "pie"}
+      
+      Time comparisons:
+      "this week vs last week commits":
+      {"sql": "SELECT CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' ELSE 'Last Week' END as period, COUNT(*) as commits FROM commits c WHERE c.committed_at >= NOW() - INTERVAL '14 days' GROUP BY CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' ELSE 'Last Week' END", "description": "Commits this week vs last week", "chart_type": "bar"}
+      
+      "this week vs last month":
+      {"sql": "SELECT CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' WHEN c.committed_at >= NOW() - INTERVAL '30 days' THEN 'Last Month' END as period, COUNT(*) as commits FROM commits c WHERE c.committed_at >= NOW() - INTERVAL '30 days' GROUP BY period ORDER BY period", "description": "Commits this week vs last month", "chart_type": "bar"}
+      
+      Only return {"error": "Please rephrase your query"} if the query asks for:
+      - Data modification (INSERT/UPDATE/DELETE)
+      - System information not in our tables
+      - Truly impossible requests
+      
+      Otherwise, attempt to generate SQL for complex queries using JOINs, subqueries, HAVING, etc.
     PROMPT
   end
   
   def execute_safe_query(sql)
-    # Basic SQL injection protection - only allow SELECT
     unless sql.strip.downcase.start_with?('select')
       raise "Only SELECT queries are allowed"
     end
     
-    # Prevent dangerous keywords
-    dangerous_keywords = ['drop', 'delete', 'update', 'insert', 'alter', 'create', 'truncate']
-    if dangerous_keywords.any? { |keyword| sql.downcase.include?(keyword) }
-      raise "Query contains prohibited keywords"
+    dangerous_patterns = [
+      /\b(drop|delete|insert|alter|create|truncate)\s+/i,
+      /;\s*(drop|delete|insert|alter|create|truncate)/i,
+      /\bupdate\s+\w+\s+set\b/i,
+      /\binto\s+\w+\s*\(/i
+    ]
+    
+    if dangerous_patterns.any? { |pattern| sql.match?(pattern) }
+      raise "Query contains prohibited SQL commands"
     end
     
     # Execute query with timeout
-    ActiveRecord::Base.connection.execute("SET statement_timeout = 10000") # 10 seconds
+    ActiveRecord::Base.connection.execute("SET statement_timeout = 10000")
     result = ActiveRecord::Base.connection.exec_query(sql)
     
     # Convert to array of hashes for easier processing
