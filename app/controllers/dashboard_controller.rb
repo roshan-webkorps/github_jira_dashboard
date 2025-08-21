@@ -1,5 +1,8 @@
 class DashboardController < ApplicationController
   include Analytics
+  include AiQueryProcessor
+  
+  skip_before_action :verify_authenticity_token, only: [:ai_query]
 
   def index
     # Renders the main React app
@@ -29,12 +32,31 @@ class DashboardController < ApplicationController
     }
   end
   
+  # NEW: AI Query endpoint
+  def ai_query
+    user_query = params[:query]
+    
+    if user_query.blank?
+      render json: { error: "Query cannot be empty" }, status: 400
+      return
+    end
+    
+    result = process_ai_query(user_query)
+    
+    if result[:error]
+      render json: result, status: 400
+    else
+      render json: result
+    end
+  end
+  
   def health_check
     render json: {
       status: "ok",
       timestamp: Time.current,
       database: database_status,
-      github_token: ENV['GITHUB_TOKEN'].present? ? "configured" : "missing"
+      github_token: ENV['GITHUB_TOKEN'].present? ? "configured" : "missing",
+      openai_token: ENV['OPENAI_API_KEY'].present? ? "configured" : "missing"
     }
   end
   

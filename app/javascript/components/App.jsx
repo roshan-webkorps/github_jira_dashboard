@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
+import AiSearchModal from './AiSearchModal'
 
 ChartJS.register(
   CategoryScale,
@@ -26,6 +27,13 @@ const App = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('24h')
+  
+  // AI Search states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [searchResult, setSearchResult] = useState(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState(null)
 
   const timeframeOptions = [
     { value: '24h', label: '24 Hours' },
@@ -57,6 +65,46 @@ const App = () => {
 
   const handleTimeframeChange = (newTimeframe) => {
     setTimeframe(newTimeframe)
+  }
+
+  // AI Search handlers
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
+
+    setSearchLoading(true)
+    setSearchError(null)
+    setSearchResult(null)
+    setIsModalOpen(true)
+
+    try {
+      const response = await fetch('/api/ai-query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process query')
+      }
+
+      setSearchResult(data)
+    } catch (err) {
+      setSearchError(err.message)
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSearchResult(null)
+    setSearchError(null)
+    setSearchQuery('')
   }
 
   const getCommitsChartData = () => {
@@ -230,6 +278,25 @@ const App = () => {
             <h1>GitHub & Jira Dashboard</h1>
             <p>Development & Project Analytics</p>
           </div>
+          
+          {/* AI Search Bar */}
+          <div className="search-section">
+            <form onSubmit={handleSearchSubmit} className="search-form">
+              <div className="search-input-container">
+                <input
+                  type="text"
+                  placeholder="Ask about your data... e.g., 'top developers by commits'"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                <button type="submit" className="search-btn" disabled={!searchQuery.trim()}>
+                  🔍
+                </button>
+              </div>
+            </form>
+          </div>
+          
           <div className="timeframe-selector">
             <label htmlFor="timeframe">Timeframe:</label>
             <select 
@@ -350,6 +417,15 @@ const App = () => {
           </div>
         </div>
       </main>
+      
+      {/* AI Search Modal */}
+      <AiSearchModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        result={searchResult}
+        loading={searchLoading}
+        error={searchError}
+      />
     </div>
   )
 }

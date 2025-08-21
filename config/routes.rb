@@ -5,6 +5,7 @@ Rails.application.routes.draw do
 
   # Simple API routes
   get "api/dashboard", to: "dashboard#api_data"
+  post "api/ai-query", to: "dashboard#ai_query"  # NEW: AI Query endpoint
   get "api/health", to: "dashboard#health_check"
 
   # Catch all route for React Router (if needed later)
