@@ -97,7 +97,7 @@ module AiQueryProcessor
       1. ONLY SELECT queries - never INSERT/UPDATE/DELETE
       2. Always JOIN with developers table to show names, not IDs
       3. Use PostgreSQL syntax: WHERE committed_at >= NOW() - INTERVAL '30 days'
-      4. Add LIMIT 10 for most queries
+      4. Add LIMIT 10 for most queries, but LIMIT 1 for "the most", "highest", "top", "best" (singular requests)
       5. Use HAVING for aggregate conditions (e.g., COUNT() > 5)
       6. Use LEFT JOIN for "has X but not Y" queries
       7. Use subqueries when needed for complex logic
