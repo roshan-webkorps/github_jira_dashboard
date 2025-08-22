@@ -12,6 +12,7 @@ gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.0.2"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
+gem "whenever", require: false
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

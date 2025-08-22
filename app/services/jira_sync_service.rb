@@ -1,13 +1,11 @@
-# app/services/jira_sync_service.rb
 class JiraSyncService
   def initialize
     @jira = JiraService.new
   end
 
-  def sync_all_data
-    Rails.logger.info "Starting Jira data sync..."
+  def sync_all_data(since = 1.year.ago)
+    Rails.logger.info "Starting Jira data sync since #{since}..."
     
-    since = 1.year.ago
     result = sync_issues('PAN1', since)
     
     if result[:error]
@@ -42,7 +40,7 @@ class JiraSyncService
       
       # Process this batch of issues
       issues.each do |issue_data|
-        ticket = sync_single_issue(issue_data)
+        ticket = upsert_single_issue(issue_data)
         synced_count += 1 if ticket
       end
       
@@ -58,28 +56,31 @@ class JiraSyncService
 
   private
 
-  def sync_single_issue(issue_data)
+  def upsert_single_issue(issue_data)
     # Find the developer who actually worked on this ticket
     developer = find_developer_from_history(issue_data)
     
     # Create or update ticket
-    ticket = Ticket.find_or_create_by(jira_id: issue_data['id']) do |t|
-      t.key = issue_data['key']
-      t.title = issue_data.dig('fields', 'summary') || 'No title'
-      t.status = issue_data.dig('fields', 'status', 'name') || 'Unknown'
-      t.priority = issue_data.dig('fields', 'priority', 'name')
-      t.ticket_type = issue_data.dig('fields', 'issuetype', 'name')
-      t.developer = developer
-      t.project_key = extract_project_key(issue_data['key'])
-      t.created_at_jira = parse_jira_date(issue_data.dig('fields', 'created'))
-      t.updated_at_jira = parse_jira_date(issue_data.dig('fields', 'updated'))
-    end
+    ticket = Ticket.find_or_initialize_by(jira_id: issue_data['id'])
+    
+    ticket.assign_attributes(
+      key: issue_data['key'],
+      title: issue_data.dig('fields', 'summary') || 'No title',
+      status: issue_data.dig('fields', 'status', 'name') || 'Unknown',
+      priority: issue_data.dig('fields', 'priority', 'name'),
+      ticket_type: issue_data.dig('fields', 'issuetype', 'name'),
+      developer: developer,
+      project_key: extract_project_key(issue_data['key']),
+      created_at_jira: parse_jira_date(issue_data.dig('fields', 'created')),
+      updated_at_jira: parse_jira_date(issue_data.dig('fields', 'updated'))
+    )
 
-    if ticket.persisted?
-      Rails.logger.info "  ✓ Synced ticket: #{ticket.key} -> #{developer&.name || 'No developer'}"
+    if ticket.save
+      Rails.logger.info "Synced ticket: #{ticket.key} -> #{developer&.name || 'No developer'}"
       ticket
     else
-      Rails.logger.error "  ✗ Failed to sync ticket: #{issue_data['key']}"
+      Rails.logger.error "Failed to sync ticket: #{issue_data['key']}"
+      Rails.logger.error "Errors: #{ticket.errors.full_messages.join(', ')}"
       nil
     end
   end
@@ -92,13 +93,13 @@ class JiraSyncService
     # Fallback: try current assignee if it looks like a developer
     current_assignee = issue_data.dig('fields', 'assignee')
     if current_assignee && looks_like_developer?(current_assignee)
-      return find_or_create_developer_from_jira(current_assignee)
+      return upsert_developer_from_jira(current_assignee)
     end
 
     # Last resort: try the creator if it looks like a developer
     creator = issue_data.dig('fields', 'creator')
     if creator && looks_like_developer?(creator)
-      return find_or_create_developer_from_jira(creator)
+      return upsert_developer_from_jira(creator)
     end
 
     nil # No developer found
@@ -133,13 +134,13 @@ class JiraSyncService
     # Return the most recent developer assignment
     if developer_assignments.any?
       recent_assignment = developer_assignments.last
-      # Create a mock user object to pass to find_or_create_developer_from_jira
+      # Create a mock user object to pass to upsert_developer_from_jira
       mock_user = {
         'accountId' => recent_assignment[:assignee_id],
         'displayName' => recent_assignment[:assignee_name],
         'emailAddress' => nil
       }
-      return find_or_create_developer_from_jira(mock_user)
+      return upsert_developer_from_jira(mock_user)
     end
 
     nil
@@ -150,11 +151,6 @@ class JiraSyncService
     account_id = user_data['accountId']
     # Only check account_id
     is_known_developer?(nil, nil, account_id)
-  end
-
-  def looks_like_developer_by_name?(name)
-    # Not used anymore since we only check account_id
-    false
   end
 
   def is_known_developer?(name, email, account_id)
@@ -172,7 +168,7 @@ class JiraSyncService
     known_developer_jira_usernames.include?(account_id)
   end
 
-  def find_or_create_developer_from_jira(assignee_data)
+  def upsert_developer_from_jira(assignee_data)
     return nil unless assignee_data
 
     account_id = assignee_data['accountId']
@@ -183,20 +179,18 @@ class JiraSyncService
     end
 
     # Find by jira_username (which is the account_id)
-    developer = Developer.find_by(jira_username: account_id)
+    developer = Developer.find_or_initialize_by(jira_username: account_id)
 
-    # Create if not found
-    unless developer
-      display_name = assignee_data['displayName']
-      email = assignee_data['emailAddress'] || "#{account_id}@jira.local"
-      
-      developer = Developer.create(
-        name: display_name || account_id,
-        email: email,
-        jira_username: account_id
-      )
-    end
+    # Update attributes
+    display_name = assignee_data['displayName']
+    email = assignee_data['emailAddress'] || "#{account_id}@jira.local"
+    
+    developer.assign_attributes(
+      name: display_name || account_id,
+      email: email
+    )
 
+    developer.save
     developer
   end
 

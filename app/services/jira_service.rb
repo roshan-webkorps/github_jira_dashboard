@@ -1,4 +1,3 @@
-# app/services/jira_service.rb
 class JiraService
   include HTTParty
 

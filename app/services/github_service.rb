@@ -75,7 +75,7 @@ class GithubService
     loop do
       query = { 
         state: state,
-        sort: 'updated',
+        sort: 'created',
         direction: 'desc',
         per_page: per_page,
         page: page
@@ -87,15 +87,19 @@ class GithubService
       
       break if result.empty?
       
-      all_prs.concat(result)
+      if since
+        filtered_result = result.select { |pr| Time.parse(pr['created_at']) >= since }
+        all_prs.concat(filtered_result)
+        
+        break if result.any? { |pr| Time.parse(pr['created_at']) < since }
+      else
+        all_prs.concat(result)
+      end
+      
       page += 1
     end
     
-    if since && all_prs.is_a?(Array)
-      all_prs.select { |pr| Time.parse(pr['created_at']) >= since }
-    else
-      all_prs
-    end
+    all_prs
   end
 
   def fetch_authenticated_user
