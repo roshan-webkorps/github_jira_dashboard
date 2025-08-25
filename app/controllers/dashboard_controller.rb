@@ -18,7 +18,15 @@ class DashboardController < ApplicationController
       charts_data: {
         commits: get_commits_data(timeframe_start, timeframe),
         pull_requests: get_pull_requests_data(timeframe_start),
-        tickets: get_tickets_data(timeframe_start)
+        tickets: get_tickets_data(timeframe_start),
+        # Additional chart data
+        activity_timeline: get_activity_timeline_data(timeframe_start, timeframe),
+        commits_per_repository: get_commits_per_repository_data(timeframe_start),
+        ticket_priority_distribution: get_ticket_priority_distribution_data(timeframe_start),
+        language_distribution: get_language_distribution_data(timeframe_start),
+        # NEW: Additional metrics
+        pull_request_activity_by_developer: get_pull_request_activity_by_developer_data(timeframe_start),
+        ticket_type_completion: get_ticket_type_completion_data(timeframe_start)
       },
       summary: {
         total_repositories: Repository.count,
@@ -26,13 +34,14 @@ class DashboardController < ApplicationController
         total_commits: Commit.where("committed_at >= ?", timeframe_start).count,
         total_pull_requests: PullRequest.where("opened_at >= ?", timeframe_start).count,
         total_tickets: Ticket.where("created_at_jira >= ?", timeframe_start).count
+        # Removed: most_active_repository and active_projects
       },
       developer_stats: get_developer_stats(timeframe_start),
       repo_stats: get_repository_stats(timeframe_start)
     }
   end
 
-  # NEW: AI Query endpoint
+  # AI Query endpoint
   def ai_query
     user_query = params[:query]
 

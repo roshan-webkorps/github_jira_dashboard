@@ -1,0 +1,266 @@
+// ChartComponents.jsx - Individual chart components
+import React from 'react'
+import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import {
+  getCommitsChartData,
+  getActivityTimelineData,
+  getCommitsPerRepositoryData,
+  getTicketPriorityData,
+  getLanguageDistributionData,
+  getPRStatusData,
+  getTicketStatusData,
+  getCompletedTicketsData,
+  getPullRequestActivityData,
+  getTicketTypeCompletionData
+} from './ChartDataHelpers'
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        padding: 8,
+        usePointStyle: true,
+        font: {
+          size: 10
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+      },
+      maxHeight: 60,
+    },
+  },
+  scales: {
+    x: {
+      ticks: {
+        maxRotation: 45,
+        minRotation: 0,
+        font: {
+          size: 10
+        }
+      }
+    },
+    y: {
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    }
+  }
+}
+
+const stackedBarChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        padding: 8,
+        usePointStyle: true,
+        font: {
+          size: 10
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+      },
+      maxHeight: 80,
+    },
+    tooltip: {
+      callbacks: {
+        title: function(context) {
+          return context[0].label;
+        },
+        label: function(context) {
+          const developerName = context.dataset.label.split(' (')[0];
+          return `${developerName}: ${context.parsed.y} commits`;
+        }
+      }
+    }
+  },
+  scales: {
+    x: {
+      stacked: true,
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    },
+    y: {
+      stacked: true,
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    },
+  }
+}
+
+const lineChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        padding: 10,
+        font: {
+          size: 11
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+        usePointStyle: true
+      },
+      maxHeight: 60,
+    },
+  },
+  scales: {
+    x: {
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    },
+    y: {
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    }
+  }
+}
+
+const pieChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        padding: 10,
+        font: {
+          size: 11
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+        usePointStyle: true
+      },
+      maxHeight: 60,
+    },
+  }
+}
+
+export const CommitActivityChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Commit Activity by Developer</h3>
+    <div className="chart-with-legend">
+      <Bar data={getCommitsChartData(dashboardData)} options={stackedBarChartOptions} />
+    </div>
+  </div>
+)
+
+export const CompletedTicketsChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Completed Tickets by Developer</h3>
+    <div className="chart-with-legend">
+      <Bar data={getCompletedTicketsData(dashboardData)} options={{
+        ...barChartOptions,
+        scales: {
+          ...barChartOptions.scales,
+          x: {
+            ticks: {
+              maxRotation: 45,
+              minRotation: 0,
+              font: {
+                size: 10
+              },
+              callback: function(value, index, values) {
+                const label = this.getLabelForValue(value);
+                return label.length > 12 ? label.substring(0, 12) + '...' : label;
+              }
+            }
+          }
+        }
+      }} />
+    </div>
+  </div>
+)
+
+export const PullRequestStatusChart = ({ dashboardData }) => (
+  <div className="chart-container pie-chart-container">
+    <h3>Pull Request Status</h3>
+    <div className="pie-chart-wrapper">
+      <Doughnut data={getPRStatusData(dashboardData)} options={pieChartOptions} />
+    </div>
+  </div>
+)
+
+export const JiraTicketStatusChart = ({ dashboardData }) => (
+  <div className="chart-container pie-chart-container">
+    <h3>Jira Ticket Status</h3>
+    <div className="pie-chart-wrapper">
+      <Doughnut data={getTicketStatusData(dashboardData)} options={pieChartOptions} />
+    </div>
+  </div>
+)
+
+export const ActivityTimelineChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Activity Timeline</h3>
+    <div className="chart-with-legend">
+      <Line data={getActivityTimelineData(dashboardData)} options={lineChartOptions} />
+    </div>
+  </div>
+)
+
+export const CommitsPerRepositoryChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Commits per Repository</h3>
+    <div className="chart-with-legend">
+      <Bar data={getCommitsPerRepositoryData(dashboardData)} options={barChartOptions} />
+    </div>
+  </div>
+)
+
+export const TicketPriorityChart = ({ dashboardData }) => (
+  <div className="chart-container pie-chart-container">
+    <h3>Ticket Priority Distribution</h3>
+    <div className="pie-chart-wrapper">
+      <Doughnut data={getTicketPriorityData(dashboardData)} options={pieChartOptions} />
+    </div>
+  </div>
+)
+
+export const LanguageDistributionChart = ({ dashboardData }) => (
+  <div className="chart-container pie-chart-container">
+    <h3>Language Distribution</h3>
+    <div className="pie-chart-wrapper">
+      <Doughnut data={getLanguageDistributionData(dashboardData)} options={pieChartOptions} />
+    </div>
+  </div>
+)
+
+export const PullRequestActivityChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Pull Request Activity by Developer</h3>
+    <div className="chart-with-legend">
+      <Bar data={getPullRequestActivityData(dashboardData)} options={barChartOptions} />
+    </div>
+  </div>
+)
+
+export const TicketTypeCompletionChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Ticket Type Completion</h3>
+    <div className="chart-with-legend">
+      <Bar data={getTicketTypeCompletionData(dashboardData)} options={barChartOptions} />
+    </div>
+  </div>
+)

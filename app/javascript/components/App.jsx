@@ -5,18 +5,33 @@ import {
   LinearScale,
   BarElement,
   ArcElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
 import AiSearchModal from './AiSearchModal'
+import {
+  CommitActivityChart,
+  CompletedTicketsChart,
+  PullRequestStatusChart,
+  JiraTicketStatusChart,
+  ActivityTimelineChart,
+  CommitsPerRepositoryChart,
+  TicketPriorityChart,
+  LanguageDistributionChart,
+  PullRequestActivityChart,
+  TicketTypeCompletionChart
+} from './ChartComponents'
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   ArcElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend
@@ -104,162 +119,6 @@ const App = () => {
     setIsModalOpen(false)
     setSearchResult(null)
     setSearchError(null)
-    // Keep searchQuery - don't clear it
-  }
-
-  const clearSearch = () => {
-    setSearchQuery('')
-    setSearchResult(null)
-    setSearchError(null)
-  }
-
-  const getCommitsChartData = () => {
-    if (!dashboardData?.charts_data?.commits) {
-      return {
-        labels: ['Loading...'],
-        datasets: [{ label: 'Commits', data: [0], backgroundColor: 'rgba(52, 152, 219, 0.6)' }]
-      }
-    }
-    
-    const { labels, datasets } = dashboardData.charts_data.commits
-    
-    // Convert developer datasets to Chart.js format
-    const chartDatasets = []
-    const colors = [
-      'rgba(52, 152, 219, 0.6)',   // Blue
-      'rgba(46, 204, 113, 0.6)',   // Green  
-      'rgba(241, 196, 15, 0.6)',   // Yellow
-      'rgba(231, 76, 60, 0.6)',    // Red
-      'rgba(155, 89, 182, 0.6)',   // Purple
-      'rgba(230, 126, 34, 0.6)',   // Orange
-    ]
-    
-    let colorIndex = 0
-    // Limit to top 6 developers to prevent legend overflow
-    const sortedDevelopers = Object.entries(datasets)
-      .map(([name, data]) => ({ name, data, total: data.reduce((sum, count) => sum + count, 0) }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 6)
-    
-    sortedDevelopers.forEach(({ name, data, total }) => {
-      // Truncate long names
-      const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name
-      
-      chartDatasets.push({
-        label: `${displayName} (${total})`,
-        data: data,
-        backgroundColor: colors[colorIndex % colors.length],
-        borderColor: colors[colorIndex % colors.length].replace('0.6', '1'),
-        borderWidth: 1,
-      })
-      colorIndex++
-    })
-    
-    return { labels, datasets: chartDatasets }
-  }
-
-  const getPRStatusData = () => {
-    if (!dashboardData?.charts_data?.pull_requests?.totals) {
-      return {
-        labels: ['Loading...'],
-        datasets: [{ data: [1], backgroundColor: ['rgba(52, 152, 219, 0.6)'] }]
-      }
-    }
-    
-    const { open, closed_merged } = dashboardData.charts_data.pull_requests.totals
-    return {
-      labels: ['Open', 'Merged/Closed'],
-      datasets: [
-        {
-          data: [open, closed_merged],
-          backgroundColor: [
-            'rgba(241, 196, 15, 0.6)',
-            'rgba(46, 204, 113, 0.6)',
-          ],
-          borderColor: [
-            'rgba(241, 196, 15, 1)',
-            'rgba(46, 204, 113, 1)',
-          ],
-          borderWidth: 1,
-        },
-      ],
-    }
-  }
-
-  const getTicketStatusData = () => {
-    if (!dashboardData?.charts_data?.tickets?.totals) {
-      return {
-        labels: ['Loading...'],
-        datasets: [{ data: [1], backgroundColor: ['rgba(52, 152, 219, 0.6)'] }]
-      }
-    }
-    
-    const { todo, in_progress, done, other } = dashboardData.charts_data.tickets.totals
-    const labels = ['To Do', 'In Progress', 'Done']
-    const data = [todo, in_progress, done]
-    
-    // Add "Other" if there are tickets with other statuses
-    if (other > 0) {
-      labels.push('Other')
-      data.push(other)
-    }
-    
-    return {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: [
-            'rgba(231, 76, 60, 0.6)',   // Red for To Do
-            'rgba(241, 196, 15, 0.6)',  // Yellow for In Progress  
-            'rgba(46, 204, 113, 0.6)',  // Green for Done
-            'rgba(155, 89, 182, 0.6)',  // Purple for Other
-          ],
-          borderColor: [
-            'rgba(231, 76, 60, 1)',
-            'rgba(241, 196, 15, 1)',
-            'rgba(46, 204, 113, 1)',
-            'rgba(155, 89, 182, 1)',
-          ],
-          borderWidth: 1,
-        },
-      ],
-    }
-  }
-
-  const getCompletedTicketsData = () => {
-    if (!dashboardData?.charts_data?.tickets?.developer_completed) {
-      return {
-        labels: ['Loading...'],
-        datasets: [{ label: 'Completed Tickets', data: [0], backgroundColor: 'rgba(46, 204, 113, 0.6)' }]
-      }
-    }
-    
-    const developerCompleted = dashboardData.charts_data.tickets.developer_completed
-    const labels = Object.keys(developerCompleted)
-    const data = Object.values(developerCompleted)
-    
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Completed Tickets',
-          data,
-          backgroundColor: 'rgba(46, 204, 113, 0.6)',
-          borderColor: 'rgba(46, 204, 113, 1)',
-          borderWidth: 1,
-        },
-      ],
-    }
-  }
-
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-    },
   }
 
   if (loading) {
@@ -366,162 +225,34 @@ const App = () => {
         <div className="charts-section">
           <h2>Analytics Overview</h2>
           
-          {/* Two Bar Charts Side by Side */}
+          {/* Row 1: Developer Activity - GitHub Focus */}
           <div className="charts-grid-two">
-            <div className="chart-container">
-              <h3>Commit Activity by Developer</h3>
-              <div className="chart-with-legend">
-                <Bar data={getCommitsChartData()} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        padding: 8,
-                        usePointStyle: true,
-                        font: {
-                          size: 10
-                        },
-                        boxWidth: 12,
-                        boxHeight: 12,
-                      },
-                      maxHeight: 80,
-                    },
-                    tooltip: {
-                      callbacks: {
-                        title: function(context) {
-                          return context[0].label; // Show the week/time period
-                        },
-                        label: function(context) {
-                          const developerName = context.dataset.label.split(' (')[0]; // Remove total from tooltip
-                          return `${developerName}: ${context.parsed.y} commits`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      stacked: true,
-                      ticks: {
-                        font: {
-                          size: 10
-                        }
-                      }
-                    },
-                    y: {
-                      stacked: true,
-                      ticks: {
-                        font: {
-                          size: 10
-                        }
-                      }
-                    },
-                  }
-                }} />
-              </div>
-            </div>
-            
-            <div className="chart-container">
-              <h3>Completed Tickets by Developer</h3>
-              <div className="chart-with-legend">
-                <Bar data={getCompletedTicketsData()} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        padding: 8,
-                        usePointStyle: true,
-                        font: {
-                          size: 10
-                        },
-                        boxWidth: 12,
-                        boxHeight: 12,
-                      },
-                      maxHeight: 60,
-                    },
-                  },
-                  scales: {
-                    x: {
-                      ticks: {
-                        maxRotation: 45,
-                        minRotation: 0,
-                        font: {
-                          size: 10
-                        },
-                        callback: function(value, index, values) {
-                          const label = this.getLabelForValue(value);
-                          // Truncate long names
-                          return label.length > 12 ? label.substring(0, 12) + '...' : label;
-                        }
-                      }
-                    },
-                    y: {
-                      ticks: {
-                        font: {
-                          size: 10
-                        }
-                      }
-                    }
-                  }
-                }} />
-              </div>
-            </div>
+            <CommitActivityChart dashboardData={dashboardData} />
+            <PullRequestActivityChart dashboardData={dashboardData} />
           </div>
 
-          {/* Two Pie Charts Side by Side */}
+          {/* Row 2: Developer Activity - Jira Focus */}
           <div className="charts-grid-two">
-            <div className="chart-container pie-chart-container">
-              <h3>Pull Request Status</h3>
-              <div className="pie-chart-wrapper">
-                <Doughnut data={getPRStatusData()} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        padding: 10,
-                        font: {
-                          size: 11
-                        },
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        usePointStyle: true
-                      },
-                      maxHeight: 60,
-                    },
-                  }
-                }} />
-              </div>
-            </div>
-            
-            <div className="chart-container pie-chart-container">
-              <h3>Jira Ticket Status</h3>
-              <div className="pie-chart-wrapper">
-                <Doughnut data={getTicketStatusData()} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        padding: 10,
-                        font: {
-                          size: 11
-                        },
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        usePointStyle: true
-                      },
-                      maxHeight: 60,
-                    },
-                  }
-                }} />
-              </div>
-            </div>
+            <CompletedTicketsChart dashboardData={dashboardData} />
+            <TicketTypeCompletionChart dashboardData={dashboardData} />
+          </div>
+
+          {/* Row 3: Ticket Analysis */}
+          <div className="charts-grid-two">
+            <TicketPriorityChart dashboardData={dashboardData} />
+            <JiraTicketStatusChart dashboardData={dashboardData} />
+          </div>
+
+          {/* Row 4: Timeline & Repository Insights */}
+          <div className="charts-grid-two">
+            <ActivityTimelineChart dashboardData={dashboardData} />
+            <CommitsPerRepositoryChart dashboardData={dashboardData} />
+          </div>
+
+          {/* Row 5: Status & Technology Overview */}
+          <div className="charts-grid-two">
+            <PullRequestStatusChart dashboardData={dashboardData} />
+            <LanguageDistributionChart dashboardData={dashboardData} />
           </div>
         </div>
       </main>
