@@ -128,21 +128,26 @@ module AiQueryProcessor
       5. Use HAVING for aggregate conditions (e.g., COUNT() > 5)
       6. Use LEFT JOIN for "has X but not Y" queries
       7. Use subqueries when needed for complex logic
+      8. For single-value aggregate queries that return a single numeric result (e.g., total count), set "chart_type" to "table".
+      9. For multi-row queries returning grouped/category data, use "bar" or "pie" accordingly.
+      10. Ensure "chart_type" matches the shape and meaning of the query result to avoid frontend errors.
 
       Performance Guidelines:
-      - Always write queries that are optimized for speed and efficiency.
-      - Use indexed columns (e.g. committed_at, opened_at, closed_at) for filtering by dates.
-      - Avoid unnecessary joins and retrieve only columns required for the query result.
+      - Always write queries optimized for speed and efficiency.
+      - Use indexed columns (e.g., committed_at, opened_at, closed_at) for filtering by dates.
+      - Avoid unnecessary joins and retrieve only columns required for the result.
       - Prefer EXISTS or subqueries over heavy joins for exclusion or complex filters.
-      - Use LIMIT clauses to restrict large result sets. Default LIMIT 10 unless user specifies otherwise or requests single/top record.
-      - For time filtering, apply WHERE clauses only when timeframe is explicitly mentioned; otherwise, query all historical data.
+      - Use LIMIT clauses to restrict large result sets. Default LIMIT 10 unless user specifies otherwise or requests a single/top record.
       - Order results meaningfully, typically descending by counts or dates.
       - Avoid broad scans that could degrade performance on large datasets.
 
       Response Format (JSON only):
       {"sql": "SELECT ...", "description": "Human description", "chart_type": "bar"}
 
-      Chart types: "bar" for counts/numbers, "pie" for categories, "table" for lists
+      Chart types:
+      - "bar" for counts/numbers with multiple categories (multi-row results)
+      - "pie" for categorical distribution data
+      - "table" for lists or single-value aggregates (e.g., total counts or sums)
 
       Complex Query Examples:
 
@@ -152,25 +157,12 @@ module AiQueryProcessor
       "developers who have commits but no pull requests":
       {"sql": "SELECT d.name, COUNT(c.id) as commit_count FROM developers d JOIN commits c ON d.id = c.developer_id LEFT JOIN pull_requests pr ON d.id = pr.developer_id WHERE pr.id IS NULL GROUP BY d.id, d.name ORDER BY commit_count DESC LIMIT 10", "description": "Developers with commits but no pull requests", "chart_type": "bar"}
 
-      "repositories with more than 5 commits":
-      {"sql": "SELECT r.name, COUNT(c.id) as commit_count, COUNT(DISTINCT c.developer_id) as developer_count FROM repositories r JOIN commits c ON r.id = c.repository_id GROUP BY r.id, r.name HAVING COUNT(c.id) > 5 ORDER BY commit_count DESC LIMIT 10", "description": "Repositories with more than 5 commits", "chart_type": "bar"}
-
-      "average commit size by developer":
-      {"sql": "SELECT d.name, AVG(c.additions + c.deletions) as avg_lines_changed FROM developers d JOIN commits c ON d.id = c.developer_id GROUP BY d.id, d.name ORDER BY avg_lines_changed DESC LIMIT 10", "description": "Average lines changed per commit by developer", "chart_type": "bar"}
-
-      "repositories by programming language":
-      {"sql": "SELECT r.language, COUNT(*) as repo_count FROM repositories r WHERE r.language IS NOT NULL GROUP BY r.language ORDER BY repo_count DESC LIMIT 10", "description": "Repositories grouped by programming language", "chart_type": "pie"}
-
-      Time comparisons:
       "this week vs last week commits":
       {"sql": "SELECT CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' ELSE 'Last Week' END as period, COUNT(*) as commits FROM commits c WHERE c.committed_at >= NOW() - INTERVAL '14 days' GROUP BY CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' ELSE 'Last Week' END", "description": "Commits this week vs last week", "chart_type": "bar"}
 
-      "this week vs last month":
-      {"sql": "SELECT CASE WHEN c.committed_at >= NOW() - INTERVAL '7 days' THEN 'This Week' WHEN c.committed_at >= NOW() - INTERVAL '30 days' THEN 'Last Month' END as period, COUNT(*) as commits FROM commits c WHERE c.committed_at >= NOW() - INTERVAL '30 days' GROUP BY period ORDER BY period", "description": "Commits this week vs last month", "chart_type": "bar"}
-
       Only return {"error": "Please rephrase your query"} if the query asks for:
       - Data modification (INSERT/UPDATE/DELETE)
-      - System information not in our tables
+      - System information not in these tables
       - Truly impossible requests
 
       Otherwise, attempt to generate SQL for complex queries using JOINs, subqueries, HAVING, etc.
