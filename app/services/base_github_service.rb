@@ -1,11 +1,11 @@
-class GithubService
+class BaseGithubService
   include HTTParty
   base_uri "https://api.github.com"
 
-  def initialize
+  def initialize(token)
     @options = {
       headers: {
-        "Authorization" => "token #{ENV['GITHUB_TOKEN']}",
+        "Authorization" => "token #{token}",
         "Accept" => "application/vnd.github.v3+json",
         "User-Agent" => "GitHub-Jira-Dashboard"
       }

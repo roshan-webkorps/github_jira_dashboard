@@ -1,12 +1,39 @@
-module Analytics
+module BaseAnalytics
   extend ActiveSupport::Concern
 
   private
 
+  # Abstract method - must be implemented by subclasses
+  def app_type
+    raise NotImplementedError, "Subclasses must implement app_type method"
+  end
+
+  # Helper methods that automatically filter by app_type
+  def scoped_commits
+    Commit.where(app_type: app_type)
+  end
+
+  def scoped_pull_requests
+    PullRequest.where(app_type: app_type)
+  end
+
+  def scoped_tickets
+    Ticket.where(app_type: app_type)
+  end
+
+  def scoped_developers
+    Developer.where(app_type: app_type)
+  end
+
+  def scoped_repositories
+    Repository.where(app_type: app_type)
+  end
+
+  # All analytics methods using scoped collections
   def get_commits_data(since, timeframe)
-    commits = Commit.includes(:developer, :repository)
-                    .where("committed_at >= ?", since)
-                    .order(:committed_at)
+    commits = scoped_commits.includes(:developer, :repository)
+                           .where("committed_at >= ?", since)
+                           .order(:committed_at)
 
     # Group commits by developer and time periods
     case timeframe
@@ -26,8 +53,8 @@ module Analytics
   end
 
   def get_pull_requests_data(since)
-    prs = PullRequest.includes(:developer)
-                     .where("pull_requests.updated_at >= ?", since)
+    prs = scoped_pull_requests.includes(:developer)
+                             .where("pull_requests.updated_at >= ?", since)
 
     if prs.empty?
       return { developers: {}, totals: { open: 0, closed_merged: 0 } }
@@ -59,8 +86,8 @@ module Analytics
   end
 
   def get_tickets_data(since)
-    tickets = Ticket.includes(:developer)
-                    .where("updated_at_jira >= ?", since) 
+    tickets = scoped_tickets.includes(:developer)
+                           .where("updated_at_jira >= ?", since) 
 
     if tickets.empty?
       return { developers: {}, totals: { todo: 0, in_progress: 0, done: 0, other: 0 }, developer_completed: {} }
@@ -101,15 +128,14 @@ module Analytics
     { developers: developer_data, totals: totals, developer_completed: developer_completed }
   end
 
-  # NEW: Activity Timeline - combines commits and completed tickets over time
   def get_activity_timeline_data(since, timeframe)
-    commits = Commit.where("committed_at >= ?", since).order(:committed_at)
+    commits = scoped_commits.where("committed_at >= ?", since).order(:committed_at)
 
     # Get completed tickets (using same done_statuses as existing method)
     done_statuses = [ "Done", "Closed", "Resolved", "Complete", "Deployed" ]
-    completed_tickets = Ticket.where("updated_at_jira >= ?", since)
-                             .where(status: done_statuses)
-                             .order(:updated_at_jira)
+    completed_tickets = scoped_tickets.where("updated_at_jira >= ?", since)
+                                     .where(status: done_statuses)
+                                     .order(:updated_at_jira)
 
     case timeframe
     when "24h"
@@ -127,14 +153,13 @@ module Analytics
     end
   end
 
-  # NEW: Commits per Repository
   def get_commits_per_repository_data(since)
-    repo_commits = Repository.joins(:commits)
-                            .where("commits.committed_at >= ?", since)
-                            .group("repositories.name")
-                            .order("COUNT(commits.id) DESC")
-                            .limit(10)
-                            .count("commits.id")
+    repo_commits = scoped_repositories.joins(:commits)
+                                     .where("commits.committed_at >= ?", since)
+                                     .group("repositories.name")
+                                     .order("COUNT(commits.id) DESC")
+                                     .limit(10)
+                                     .count("commits.id")
 
     if repo_commits.empty?
       return { labels: [ "No Data" ], datasets: [ { label: "Commits", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" } ] }
@@ -152,11 +177,10 @@ module Analytics
     }
   end
 
-  # NEW: Ticket Priority Distribution
   def get_ticket_priority_distribution_data(since)
-    priority_counts = Ticket.where("updated_at_jira >= ?", since)
-                           .group(:priority)
-                           .count
+    priority_counts = scoped_tickets.where("updated_at_jira >= ?", since)
+                                   .group(:priority)
+                                   .count
 
     if priority_counts.empty?
       return {
@@ -194,14 +218,13 @@ module Analytics
     }
   end
 
-  # FIXED: Language Distribution - Now shows all repositories regardless of timeframe
   def get_language_distribution_data(since)
     # Get all repositories with their languages and total commit counts (not filtered by timeframe)
-    language_data = Repository.joins(:commits)
-                             .where.not(language: [ nil, "" ])
-                             .group(:language, "repositories.name")
-                             .count("commits.id")
-                             .group_by { |((language, repo_name), count)| language }
+    language_data = scoped_repositories.joins(:commits)
+                                      .where.not(language: [ nil, "" ])
+                                      .group(:language, "repositories.name")
+                                      .count("commits.id")
+                                      .group_by { |((language, repo_name), count)| language }
 
     if language_data.empty?
       return {
@@ -251,7 +274,171 @@ module Analytics
     }
   end
 
-  # Activity timeline grouping methods
+  def get_pull_request_activity_by_developer_data(since)
+    prs = scoped_pull_requests.includes(:developer)
+                             .where("pull_requests.updated_at >= ?", since)
+
+    if prs.empty?
+      return {
+        labels: [ "No Data" ],
+        datasets: [
+          { label: "Created", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" },
+          { label: "Closed/Merged", data: [ 0 ], backgroundColor: "rgba(46, 204, 113, 0.6)" }
+        ]
+      }
+    end
+
+    # Get all developers with their activity counts
+    developer_activity = {}
+    developer_names = prs.joins(:developer).pluck("developers.name").uniq
+
+    developer_names.each do |dev_name|
+      dev_prs = prs.joins(:developer).where("developers.name = ?", dev_name)
+
+      created_count = dev_prs.count
+      closed_count = dev_prs.where(state: "closed").count + dev_prs.where.not(merged_at: nil).count
+
+      developer_activity[dev_name] = {
+        created: created_count,
+        closed: closed_count,
+        total: created_count + closed_count
+      }
+    end
+
+    # Sort developers by total activity (descending)
+    sorted_developers = developer_activity.sort_by { |dev, data| -data[:total] }.to_h
+
+    # Build the chart data
+    labels = sorted_developers.keys.map { |name| name.length > 12 ? "#{name[0...9]}..." : name }
+    created_data = sorted_developers.values.map { |data| data[:created] }
+    closed_data = sorted_developers.values.map { |data| data[:closed] }
+
+    {
+      labels: labels,
+      datasets: [
+        {
+          label: "PRs Created",
+          data: created_data,
+          backgroundColor: "rgba(52, 152, 219, 0.6)",
+          borderColor: "rgba(52, 152, 219, 1)",
+          borderWidth: 1
+        },
+        {
+          label: "PRs Closed/Merged",
+          data: closed_data,
+          backgroundColor: "rgba(46, 204, 113, 0.6)",
+          borderColor: "rgba(46, 204, 113, 1)",
+          borderWidth: 1
+        }
+      ]
+    }
+  end
+
+  def get_ticket_type_completion_data(since)
+    tickets = scoped_tickets.includes(:developer)
+                           .where("updated_at_jira >= ?", since)
+
+    if tickets.empty?
+      return {
+        labels: [ "No Data" ],
+        datasets: [ { label: "Tickets", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" } ]
+      }
+    end
+
+    # Use same done_statuses as existing get_tickets_data method
+    done_statuses = [ "Done", "Closed", "Resolved", "Complete", "Deployed" ]
+
+    # Filter to only completed tickets, same as get_tickets_data logic
+    completed_tickets = tickets.where(status: done_statuses)
+
+    if completed_tickets.empty?
+      return {
+        labels: [ "No Data" ],
+        datasets: [ { label: "Tickets", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" } ]
+      }
+    end
+
+    # Group by priority/type and developer - same approach as existing method
+    priority_developer_counts = {}
+    developer_colors = {}
+
+    # Use the same grouping logic as get_tickets_data
+    completed_tickets.joins(:developer).group("developers.name", :priority).count.each do |(dev_name, priority), count|
+      priority_key = priority.present? ? priority : "No Priority"
+
+      priority_developer_counts[priority_key] ||= {}
+      priority_developer_counts[priority_key][dev_name] ||= 0
+      priority_developer_counts[priority_key][dev_name] += count
+    end
+
+    # Get developers same way as existing method - from tickets that have developers
+    all_developers = completed_tickets.joins(:developer).pluck("developers.name").uniq.sort
+
+    colors = [
+      "rgba(52, 152, 219, 0.6)",   # Blue
+      "rgba(46, 204, 113, 0.6)",   # Green
+      "rgba(241, 196, 15, 0.6)",   # Yellow
+      "rgba(231, 76, 60, 0.6)",    # Red
+      "rgba(155, 89, 182, 0.6)",   # Purple
+      "rgba(230, 126, 34, 0.6)",   # Orange
+      "rgba(26, 188, 156, 0.6)",   # Turquoise
+      "rgba(149, 165, 166, 0.6)"   # Gray
+    ]
+
+    all_developers.each_with_index do |dev, index|
+      developer_colors[dev] = {
+        background: colors[index % colors.length],
+        border: colors[index % colors.length].gsub("0.6", "1")
+      }
+    end
+
+    # Build datasets - one dataset per developer (only those with completed tickets)
+    datasets = []
+    all_developers.each do |developer|
+      data = []
+      priority_developer_counts.keys.sort.each do |priority|
+        count = priority_developer_counts[priority][developer] || 0
+        data << count
+      end
+
+      # Only include developers who have completed tickets (same as existing logic)
+      if data.sum > 0
+        datasets << {
+          label: developer.length > 12 ? "#{developer[0...9]}..." : developer,
+          data: data,
+          backgroundColor: developer_colors[developer][:background],
+          borderColor: developer_colors[developer][:border],
+          borderWidth: 1
+        }
+      end
+    end
+
+    {
+      labels: priority_developer_counts.keys.sort,
+      datasets: datasets
+    }
+  end
+
+  def get_repository_stats(since)
+    scoped_repositories.joins(:commits)
+                      .where("commits.committed_at >= ?", since)
+                      .group("repositories.id", "repositories.name")
+                      .order("COUNT(commits.id) DESC")
+                      .limit(10)
+                      .pluck("repositories.name", "COUNT(commits.id)")
+                      .map { |name, count| { name: name, commits: count } }
+  end
+
+  def get_developer_stats(since)
+    scoped_developers.joins(:commits)
+                    .where("commits.committed_at >= ?", since)
+                    .group("developers.id", "developers.name")
+                    .order("COUNT(commits.id) DESC")
+                    .limit(10)
+                    .pluck("developers.name", "COUNT(commits.id)")
+                    .map { |name, count| { name: name, commits: count } }
+  end
+
   def group_activity_by_hours(commits, tickets, since)
     labels = (0..23).map { |hour| "#{hour}h ago" }.reverse
 
@@ -479,172 +666,5 @@ module Analytics
     end
 
     { labels: labels.reverse, datasets: developer_datasets.transform_values(&:reverse) }
-  end
-
-  def get_repository_stats(since)
-    Repository.joins(:commits)
-              .where("commits.committed_at >= ?", since)
-              .group("repositories.id", "repositories.name")
-              .order("COUNT(commits.id) DESC")
-              .limit(10)
-              .pluck("repositories.name", "COUNT(commits.id)")
-              .map { |name, count| { name: name, commits: count } }
-  end
-
-  # NEW: Pull Request Activity by Developer - Now sorted by total activity
-  def get_pull_request_activity_by_developer_data(since)
-    prs = PullRequest.includes(:developer)
-                    .where("pull_requests.updated_at >= ?", since)
-
-    if prs.empty?
-      return {
-        labels: [ "No Data" ],
-        datasets: [
-          { label: "Created", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" },
-          { label: "Closed/Merged", data: [ 0 ], backgroundColor: "rgba(46, 204, 113, 0.6)" }
-        ]
-      }
-    end
-
-    # Get all developers with their activity counts
-    developer_activity = {}
-    developer_names = prs.joins(:developer).pluck("developers.name").uniq
-
-    developer_names.each do |dev_name|
-      dev_prs = prs.joins(:developer).where("developers.name = ?", dev_name)
-
-      created_count = dev_prs.count
-      closed_count = dev_prs.where(state: "closed").count + dev_prs.where.not(merged_at: nil).count
-
-      developer_activity[dev_name] = {
-        created: created_count,
-        closed: closed_count,
-        total: created_count + closed_count
-      }
-    end
-
-    # Sort developers by total activity (descending)
-    sorted_developers = developer_activity.sort_by { |dev, data| -data[:total] }.to_h
-
-    # Build the chart data
-    labels = sorted_developers.keys.map { |name| name.length > 12 ? "#{name[0...9]}..." : name }
-    created_data = sorted_developers.values.map { |data| data[:created] }
-    closed_data = sorted_developers.values.map { |data| data[:closed] }
-
-    {
-      labels: labels,
-      datasets: [
-        {
-          label: "PRs Created",
-          data: created_data,
-          backgroundColor: "rgba(52, 152, 219, 0.6)",
-          borderColor: "rgba(52, 152, 219, 1)",
-          borderWidth: 1
-        },
-        {
-          label: "PRs Closed/Merged",
-          data: closed_data,
-          backgroundColor: "rgba(46, 204, 113, 0.6)",
-          borderColor: "rgba(46, 204, 113, 1)",
-          borderWidth: 1
-        }
-      ]
-    }
-  end
-
-  # FIXED: Ticket Type Completion by Developer - Now uses same logic as get_tickets_data
-  def get_ticket_type_completion_data(since)
-    tickets = Ticket.includes(:developer)
-                    .where("updated_at_jira >= ?", since)
-
-    if tickets.empty?
-      return {
-        labels: [ "No Data" ],
-        datasets: [ { label: "Tickets", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" } ]
-      }
-    end
-
-    # Use same done_statuses as existing get_tickets_data method
-    done_statuses = [ "Done", "Closed", "Resolved", "Complete", "Deployed" ]
-
-    # Filter to only completed tickets, same as get_tickets_data logic
-    completed_tickets = tickets.where(status: done_statuses)
-
-    if completed_tickets.empty?
-      return {
-        labels: [ "No Data" ],
-        datasets: [ { label: "Tickets", data: [ 0 ], backgroundColor: "rgba(52, 152, 219, 0.6)" } ]
-      }
-    end
-
-    # Group by priority/type and developer - same approach as existing method
-    priority_developer_counts = {}
-    developer_colors = {}
-
-    # Use the same grouping logic as get_tickets_data
-    completed_tickets.joins(:developer).group("developers.name", :priority).count.each do |(dev_name, priority), count|
-      priority_key = priority.present? ? priority : "No Priority"
-
-      priority_developer_counts[priority_key] ||= {}
-      priority_developer_counts[priority_key][dev_name] ||= 0
-      priority_developer_counts[priority_key][dev_name] += count
-    end
-
-    # Get developers same way as existing method - from tickets that have developers
-    all_developers = completed_tickets.joins(:developer).pluck("developers.name").uniq.sort
-
-    colors = [
-      "rgba(52, 152, 219, 0.6)",   # Blue
-      "rgba(46, 204, 113, 0.6)",   # Green
-      "rgba(241, 196, 15, 0.6)",   # Yellow
-      "rgba(231, 76, 60, 0.6)",    # Red
-      "rgba(155, 89, 182, 0.6)",   # Purple
-      "rgba(230, 126, 34, 0.6)",   # Orange
-      "rgba(26, 188, 156, 0.6)",   # Turquoise
-      "rgba(149, 165, 166, 0.6)"   # Gray
-    ]
-
-    all_developers.each_with_index do |dev, index|
-      developer_colors[dev] = {
-        background: colors[index % colors.length],
-        border: colors[index % colors.length].gsub("0.6", "1")
-      }
-    end
-
-    # Build datasets - one dataset per developer (only those with completed tickets)
-    datasets = []
-    all_developers.each do |developer|
-      data = []
-      priority_developer_counts.keys.sort.each do |priority|
-        count = priority_developer_counts[priority][developer] || 0
-        data << count
-      end
-
-      # Only include developers who have completed tickets (same as existing logic)
-      if data.sum > 0
-        datasets << {
-          label: developer.length > 12 ? "#{developer[0...9]}..." : developer,
-          data: data,
-          backgroundColor: developer_colors[developer][:background],
-          borderColor: developer_colors[developer][:border],
-          borderWidth: 1
-        }
-      end
-    end
-
-    {
-      labels: priority_developer_counts.keys.sort,
-      datasets: datasets
-    }
-  end
-
-  def get_developer_stats(since)
-    Developer.joins(:commits)
-             .where("commits.committed_at >= ?", since)
-             .group("developers.id", "developers.name")
-             .order("COUNT(commits.id) DESC")
-             .limit(10)
-             .pluck("developers.name", "COUNT(commits.id)")
-             .map { |name, count| { name: name, commits: count } }
   end
 end

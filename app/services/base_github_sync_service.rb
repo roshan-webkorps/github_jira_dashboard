@@ -1,10 +1,10 @@
-class GithubSyncService
+class BaseGithubSyncService
   def initialize
-    @github = GithubService.new
+    @github = get_github_service
   end
 
   def sync_all_data(since = 1.year.ago)
-    Rails.logger.info "Starting GitHub data sync since #{since}..."
+    Rails.logger.info "Starting #{self.class.name} data sync since #{since}..."
 
     # Get repositories first
     repos_data = sync_repositories
@@ -16,31 +16,20 @@ class GithubSyncService
       sync_repository_pull_requests(repo, since)
     end
 
-    Rails.logger.info "GitHub data sync completed"
+    Rails.logger.info "#{self.class.name} data sync completed"
     {
       repositories: repos_data[:count],
-      developers: Developer.count,
-      commits: Commit.count,
-      pull_requests: PullRequest.count
+      developers: Developer.where(app_type: get_app_type).count,
+      commits: Commit.where(app_type: get_app_type).count,
+      pull_requests: PullRequest.where(app_type: get_app_type).count
     }
   end
 
   def sync_repositories
     Rails.logger.info "Syncing repositories..."
 
-    # Define the specific repositories we want to sync
-    target_repos = {
-      "339825464" => "ap-kubernetes-helm",
-      "120736547" => "asset_panda_web_app",
-      "211844555" => "ap_audit_api",
-      "269534419" => "ap-reservation-api",
-      "196480441" => "ap-barcode-api",
-      "511952365" => "help-desk",
-      "288275646" => "ap_jobs_service",
-      "173906727" => "asset_panda_zendesk_integration",
-      "463112505" => "assetpanda-jira-app",
-      "225449659" => "panda3"
-    }
+    # Get the specific repositories we want to sync
+    target_repos = get_target_repositories
 
     repos = @github.fetch_user_repos
     return { error: repos[:error] } if repos.is_a?(Hash) && repos[:error]
@@ -50,7 +39,7 @@ class GithubSyncService
       target_repos.key?(repo_data["id"].to_s)
     end
 
-    Rails.logger.info "  Found #{repos.count} total repositories, filtering to #{filtered_repos.count} target repositories"
+    Rails.logger.info "Found #{repos.count} total repositories, filtering to #{filtered_repos.count} target repositories"
     count = 0
     repositories = []
 
@@ -60,10 +49,10 @@ class GithubSyncService
       if repo.persisted?
         count += 1
         repositories << repo
-        Rails.logger.info "  ✓ Synced repository: #{repo.full_name}"
+        Rails.logger.info "Synced repository: #{repo.full_name}"
       else
-        Rails.logger.error "  ✗ Failed to sync repository: #{repo_data['full_name']}"
-        Rails.logger.error "    Errors: #{repo.errors.full_messages.join(', ')}"
+        Rails.logger.error "Failed to sync repository: #{repo_data['full_name']}"
+        Rails.logger.error "Errors: #{repo.errors.full_messages.join(', ')}"
       end
     end
 
@@ -71,8 +60,8 @@ class GithubSyncService
     synced_ids = filtered_repos.map { |r| r["id"].to_s }
     missing_repos = target_repos.reject { |id, name| synced_ids.include?(id) }
     if missing_repos.any?
-      Rails.logger.warn "  Missing repositories (not found in GitHub response):"
-      missing_repos.each { |id, name| Rails.logger.warn "    - #{name} (#{id})" }
+      Rails.logger.warn "Missing repositories (not found in GitHub response):"
+      missing_repos.each { |id, name| Rails.logger.warn "  - #{name} (#{id})" }
     end
 
     Rails.logger.info "Synced #{count} repositories total"
@@ -80,7 +69,7 @@ class GithubSyncService
   end
 
   def sync_repository_commits(repository, since = 1.year.ago)
-    Rails.logger.info "  Syncing commits for #{repository.full_name} since #{since}..."
+    Rails.logger.info "Syncing commits for #{repository.full_name} since #{since}..."
 
     start_time = Time.current
     commits = @github.fetch_repo_commits(repository.owner, repository.name, since)
@@ -88,7 +77,7 @@ class GithubSyncService
 
     return if commits.is_a?(Hash) && commits[:error]
 
-    Rails.logger.info "    API fetch took #{api_time.round(2)} seconds, got #{commits.count} commits"
+    Rails.logger.info "API fetch took #{api_time.round(2)} seconds, got #{commits.count} commits"
 
     count = 0
     db_start = Time.current
@@ -106,11 +95,11 @@ class GithubSyncService
     end
     db_time = Time.current - db_start
 
-    Rails.logger.info "    ✓ Synced #{count} commits (DB operations: #{db_time.round(2)}s)"
+    Rails.logger.info "Synced #{count} commits (DB operations: #{db_time.round(2)}s)"
   end
 
   def sync_repository_pull_requests(repository, since = 1.year.ago)
-    Rails.logger.info "  Syncing pull requests for #{repository.full_name} since #{since}..."
+    Rails.logger.info "Syncing pull requests for #{repository.full_name} since #{since}..."
 
     start_time = Time.current
     prs = @github.fetch_repo_pull_requests(repository.owner, repository.name, "all", since)
@@ -118,7 +107,7 @@ class GithubSyncService
 
     return if prs.is_a?(Hash) && prs[:error]
 
-    Rails.logger.info "    API fetch took #{api_time.round(2)} seconds, got #{prs.count} PRs"
+    Rails.logger.info "API fetch took #{api_time.round(2)} seconds, got #{prs.count} PRs"
 
     count = 0
     db_start = Time.current
@@ -135,13 +124,31 @@ class GithubSyncService
     end
     db_time = Time.current - db_start
 
-    Rails.logger.info "    ✓ Synced #{count} pull requests (DB operations: #{db_time.round(2)}s)"
+    Rails.logger.info "Synced #{count} pull requests (DB operations: #{db_time.round(2)}s)"
+  end
+
+  protected
+
+  # Abstract methods to be implemented by subclasses
+  def get_github_service
+    raise NotImplementedError, "Subclasses must implement get_github_service"
+  end
+
+  def get_target_repositories
+    raise NotImplementedError, "Subclasses must implement get_target_repositories"
+  end
+
+  def get_app_type
+    raise NotImplementedError, "Subclasses must implement get_app_type"
   end
 
   private
 
   def upsert_repository(repo_data)
-    repo = Repository.find_or_initialize_by(github_id: repo_data["id"].to_s)
+    repo = Repository.find_or_initialize_by(
+      github_id: repo_data["id"].to_s,
+      app_type: get_app_type
+    )
 
     repo.assign_attributes(
       name: repo_data["name"],
@@ -163,7 +170,10 @@ class GithubSyncService
     email = user_data["email"] || "#{username}@github.local"
     name = user_data["name"] || username
 
-    developer = Developer.find_or_initialize_by(github_username: username)
+    developer = Developer.find_or_initialize_by(
+      github_username: username,
+      app_type: get_app_type
+    )
 
     developer.assign_attributes(
       name: name,
@@ -171,12 +181,20 @@ class GithubSyncService
       avatar_url: user_data["avatar_url"]
     )
 
-    developer.save
-    developer
+    if developer.save
+      developer
+    else
+      Rails.logger.error "Failed to save developer: #{developer.errors.full_messages.join(', ')}"
+      Rails.logger.error "Developer data: #{user_data.inspect}"
+      nil
+    end
   end
 
   def upsert_commit(commit_data, developer, repository)
-    commit = Commit.find_or_initialize_by(sha: commit_data["sha"])
+    commit = Commit.find_or_initialize_by(
+      sha: commit_data["sha"],
+      app_type: get_app_type
+    )
 
     commit.assign_attributes(
       message: commit_data["commit"]["message"],
@@ -192,7 +210,10 @@ class GithubSyncService
   end
 
   def upsert_pull_request(pr_data, developer, repository)
-    pr = PullRequest.find_or_initialize_by(github_id: pr_data["id"].to_s)
+    pr = PullRequest.find_or_initialize_by(
+      github_id: pr_data["id"].to_s,
+      app_type: get_app_type
+    )
 
     pr.assign_attributes(
       number: pr_data["number"],

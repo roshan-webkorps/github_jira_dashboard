@@ -1,26 +1,46 @@
-class JiraSyncService
+class BaseJiraSyncService
   def initialize
-    @jira = JiraService.new
+    @jira = get_jira_service
   end
 
   def sync_all_data(since = 1.year.ago)
-    Rails.logger.info "Starting Jira data sync since #{since}..."
+    Rails.logger.info "Starting #{self.class.name} data sync since #{since}..."
 
-    result = sync_issues("PAN1", since)
+    project_keys = get_project_keys
+    total_synced = 0
 
-    if result[:error]
-      Rails.logger.error "Jira sync failed: #{result[:error]}"
-      return result
+    if project_keys.is_a?(Array)
+      # Multiple projects
+      project_keys.each do |project_key|
+        result = sync_issues(project_key, since)
+
+        if result[:error]
+          Rails.logger.error "Jira sync failed for project #{project_key}: #{result[:error]}"
+          return result
+        end
+
+        total_synced += result[:synced_count]
+      end
+    else
+      # Single project
+      result = sync_issues(project_keys, since)
+
+      if result[:error]
+        Rails.logger.error "Jira sync failed: #{result[:error]}"
+        return result
+      end
+
+      total_synced = result[:synced_count]
     end
 
-    Rails.logger.info "Jira data sync completed"
+    Rails.logger.info "#{self.class.name} data sync completed"
     {
-      tickets: Ticket.count,
-      synced_count: result[:synced_count]
+      tickets: Ticket.where(app_type: get_app_type).count,
+      synced_count: total_synced
     }
   end
 
-  def sync_issues(project_key = "PAN1", since = 1.year.ago)
+  def sync_issues(project_key, since = 1.year.ago)
     Rails.logger.info "Syncing Jira issues from project #{project_key}#{since ? " since #{since.strftime('%Y-%m-%d')}" : " (all time)"}..."
 
     synced_count = 0
@@ -54,6 +74,29 @@ class JiraSyncService
     { synced_count: synced_count }
   end
 
+  protected
+
+  # Abstract methods to be implemented by subclasses
+  def get_jira_service
+    raise NotImplementedError, "Subclasses must implement get_jira_service"
+  end
+
+  def get_project_keys
+    raise NotImplementedError, "Subclasses must implement get_project_keys"
+  end
+
+  def get_app_type
+    raise NotImplementedError, "Subclasses must implement get_app_type"
+  end
+
+  def is_known_developer?(name, email, account_id)
+    raise NotImplementedError, "Subclasses must implement is_known_developer?"
+  end
+
+  def get_known_developer_account_ids
+    raise NotImplementedError, "Subclasses must implement get_known_developer_account_ids"
+  end
+
   private
 
   def upsert_single_issue(issue_data)
@@ -72,7 +115,8 @@ class JiraSyncService
       developer: developer,
       project_key: extract_project_key(issue_data["key"]),
       created_at_jira: parse_jira_date(issue_data.dig("fields", "created")),
-      updated_at_jira: parse_jira_date(issue_data.dig("fields", "updated"))
+      updated_at_jira: parse_jira_date(issue_data.dig("fields", "updated")),
+      app_type: get_app_type
     )
 
     if ticket.save
@@ -153,21 +197,6 @@ class JiraSyncService
     is_known_developer?(nil, nil, account_id)
   end
 
-  def is_known_developer?(name, email, account_id)
-    # Define your exact developers using their jira_username values
-    known_developer_jira_usernames = [
-      "62bff472118b20bee2bdc815",  # Sheela Gouri
-      "6148dba278b7a1006aa8748c",  # Shubham
-      "712020:6299518f-0328-4207-8302-c81123698c07",  # vsingh
-      "63216307f8c7bc1f35837f67",  # rohitmahajan
-      "5f5f73becacd8300775466c4",  # Priya Thakur
-      "5f46ee1b347294003e7435bd"   # mehul
-    ]
-
-    # Simply check if account_id is in our known developers list
-    known_developer_jira_usernames.include?(account_id)
-  end
-
   def upsert_developer_from_jira(assignee_data)
     return nil unless assignee_data
 
@@ -178,8 +207,11 @@ class JiraSyncService
       return nil
     end
 
-    # Find by jira_username (which is the account_id)
-    developer = Developer.find_or_initialize_by(jira_username: account_id)
+    # Find by jira_username (which is the account_id) and type
+    developer = Developer.find_or_initialize_by(
+      jira_username: account_id,
+      app_type: get_app_type
+    )
 
     # Update attributes
     display_name = assignee_data["displayName"]

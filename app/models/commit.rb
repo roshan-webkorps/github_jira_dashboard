@@ -4,6 +4,7 @@
 #
 #  id            :bigint           not null, primary key
 #  additions     :integer          default(0)
+#  app_type      :string           default("legacy"), not null
 #  committed_at  :datetime
 #  deletions     :integer          default(0)
 #  message       :text
@@ -15,6 +16,7 @@
 #
 # Indexes
 #
+#  index_commits_on_app_type       (app_type)
 #  index_commits_on_committed_at   (committed_at)
 #  index_commits_on_developer_id   (developer_id)
 #  index_commits_on_repository_id  (repository_id)
@@ -24,6 +26,10 @@
 #
 #  fk_rails_...  (developer_id => developers.id)
 #  fk_rails_...  (repository_id => repositories.id)
+#
+# Check Constraints
+#
+#  check_commit_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
 #
 class Commit < ApplicationRecord
   belongs_to :developer

@@ -3,6 +3,7 @@
 # Table name: pull_requests
 #
 #  id            :bigint           not null, primary key
+#  app_type      :string           default("legacy"), not null
 #  body          :text
 #  closed_at     :datetime
 #  merged_at     :datetime
@@ -18,6 +19,7 @@
 #
 # Indexes
 #
+#  index_pull_requests_on_app_type                  (app_type)
 #  index_pull_requests_on_developer_id              (developer_id)
 #  index_pull_requests_on_github_id                 (github_id) UNIQUE
 #  index_pull_requests_on_repository_id             (repository_id)
@@ -28,6 +30,10 @@
 #
 #  fk_rails_...  (developer_id => developers.id)
 #  fk_rails_...  (repository_id => repositories.id)
+#
+# Check Constraints
+#
+#  check_pull_request_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
 #
 class PullRequest < ApplicationRecord
   belongs_to :developer

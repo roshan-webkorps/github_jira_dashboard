@@ -1,5 +1,4 @@
 class DashboardController < ApplicationController
-  include Analytics
   include AiQueryProcessor
 
   skip_before_action :verify_authenticity_token, only: [ :ai_query ]
@@ -10,10 +9,15 @@ class DashboardController < ApplicationController
 
   def api_data
     timeframe = params[:timeframe] || "24h"
+    app_type = params[:app_type] || "legacy"
     timeframe_start = calculate_timeframe_start(timeframe)
+
+    # Extend with the appropriate analytics module
+    extend get_analytics_module(app_type)
 
     render json: {
       timeframe: timeframe,
+      app_type: app_type,
       message: "Dashboard API is working!",
       charts_data: {
         commits: get_commits_data(timeframe_start, timeframe),
@@ -28,14 +32,7 @@ class DashboardController < ApplicationController
         pull_request_activity_by_developer: get_pull_request_activity_by_developer_data(timeframe_start),
         ticket_type_completion: get_ticket_type_completion_data(timeframe_start)
       },
-      summary: {
-        total_repositories: Repository.count,
-        total_developers: Developer.count,
-        total_commits: Commit.where("committed_at >= ?", timeframe_start).count,
-        total_pull_requests: PullRequest.where("opened_at >= ?", timeframe_start).count,
-        total_tickets: Ticket.where("created_at_jira >= ?", timeframe_start).count
-        # Removed: most_active_repository and active_projects
-      },
+      summary: get_summary_data(timeframe_start, app_type),
       developer_stats: get_developer_stats(timeframe_start),
       repo_stats: get_repository_stats(timeframe_start)
     }
@@ -44,13 +41,14 @@ class DashboardController < ApplicationController
   # AI Query endpoint
   def ai_query
     user_query = params[:query]
+    app_type = params[:app_type] || "legacy"
 
     if user_query.blank?
       render json: { error: "Query cannot be empty" }, status: 400
       return
     end
 
-    result = process_ai_query(user_query)
+    result = process_ai_query(user_query, app_type)
 
     if result[:error]
       render json: result, status: 400
@@ -70,6 +68,25 @@ class DashboardController < ApplicationController
   end
 
   private
+
+  def get_analytics_module(app_type)
+    case app_type
+    when "pioneer"
+      PioneerAnalytics
+    else
+      LegacyAnalytics
+    end
+  end
+
+  def get_summary_data(timeframe_start, app_type)
+    {
+      total_repositories: Repository.where(app_type: app_type).count,
+      total_developers: Developer.where(app_type: app_type).count,
+      total_commits: Commit.where(app_type: app_type).where("committed_at >= ?", timeframe_start).count,
+      total_pull_requests: PullRequest.where(app_type: app_type).where("opened_at >= ?", timeframe_start).count,
+      total_tickets: Ticket.where(app_type: app_type).where("created_at_jira >= ?", timeframe_start).count
+    }
+  end
 
   def calculate_timeframe_start(timeframe)
     case timeframe

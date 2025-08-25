@@ -3,6 +3,7 @@
 # Table name: developers
 #
 #  id              :bigint           not null, primary key
+#  app_type        :string           default("legacy"), not null
 #  avatar_url      :string
 #  email           :string
 #  github_username :string
@@ -13,8 +14,13 @@
 #
 # Indexes
 #
-#  index_developers_on_github_username  (github_username) UNIQUE
-#  index_developers_on_jira_username    (jira_username) UNIQUE
+#  index_developers_on_app_type                      (app_type)
+#  index_developers_on_github_username_and_app_type  (github_username,app_type) UNIQUE
+#  index_developers_on_jira_username_and_app_type    (jira_username,app_type) UNIQUE
+#
+# Check Constraints
+#
+#  check_developer_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
 #
 class Developer < ApplicationRecord
   has_many :commits, dependent: :destroy

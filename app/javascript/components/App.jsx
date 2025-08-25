@@ -42,6 +42,7 @@ const App = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('24h')
+  const [appType, setAppType] = useState('legacy')
   
   // AI Search states
   const [searchQuery, setSearchQuery] = useState('')
@@ -58,14 +59,19 @@ const App = () => {
     { value: '1y', label: '1 Year' }
   ]
 
+  const appTypeOptions = [
+    { value: 'legacy', label: 'Legacy App' },
+    { value: 'pioneer', label: 'Pioneer App' }
+  ]
+
   useEffect(() => {
     fetchDashboardData()
-  }, [timeframe])
+  }, [timeframe, appType])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/dashboard?timeframe=${timeframe}`)
+      const response = await fetch(`/api/dashboard?timeframe=${timeframe}&app_type=${appType}`)
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data')
       }
@@ -80,6 +86,10 @@ const App = () => {
 
   const handleTimeframeChange = (newTimeframe) => {
     setTimeframe(newTimeframe)
+  }
+
+  const handleAppTypeChange = (newAppType) => {
+    setAppType(newAppType)
   }
 
   // AI Search handlers
@@ -98,7 +108,10 @@ const App = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ 
+          query: searchQuery,
+          app_type: appType 
+        }),
       })
 
       const data = await response.json()
@@ -169,20 +182,38 @@ const App = () => {
             </form>
           </div>
           
-          <div className="timeframe-selector">
-            <label htmlFor="timeframe">Timeframe:</label>
-            <select 
-              id="timeframe"
-              value={timeframe} 
-              onChange={(e) => handleTimeframeChange(e.target.value)}
-              className="timeframe-select"
-            >
-              {timeframeOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="controls-section">
+            <div className="app-type-selector">
+              <label htmlFor="appType">App Type:</label>
+              <select 
+                id="appType"
+                value={appType} 
+                onChange={(e) => handleAppTypeChange(e.target.value)}
+                className="app-type-select"
+              >
+                {appTypeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="timeframe-selector">
+              <label htmlFor="timeframe">Timeframe:</label>
+              <select 
+                id="timeframe"
+                value={timeframe} 
+                onChange={(e) => handleTimeframeChange(e.target.value)}
+                className="timeframe-select"
+              >
+                {timeframeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </header>

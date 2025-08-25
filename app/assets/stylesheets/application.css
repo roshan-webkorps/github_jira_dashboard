@@ -890,3 +890,58 @@ body {
   margin: 0;
   line-height: 1.55;
 }
+
+.controls-section {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-type-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+}
+
+.app-type-selector label {
+  color: #495057;
+  font-weight: 500;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.app-type-select {
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  color: #495057;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-width: 120px;
+}
+
+.app-type-select:hover {
+  border-color: #3498db;
+}
+
+.app-type-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+@media (max-width: 1024px) {
+  .controls-section {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    justify-self: center;
+  }
+}

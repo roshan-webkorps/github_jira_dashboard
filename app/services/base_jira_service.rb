@@ -1,16 +1,16 @@
-class JiraService
+class BaseJiraService
   include HTTParty
 
-  def initialize
-    @base_uri = ENV["JIRA_URL"]
+  def initialize(base_uri, username, api_token)
+    @base_uri = base_uri
     @options = {
       headers: {
         "Content-Type" => "application/json",
         "Accept" => "application/json"
       },
       basic_auth: {
-        username: ENV["JIRA_USERNAME"],
-        password: ENV["JIRA_API_TOKEN"]
+        username: username,
+        password: api_token
       }
     }
 
@@ -59,14 +59,20 @@ class JiraService
     handle_response(response)
   end
 
-  private
+  protected
 
   def build_jql_query(project_key, since)
+    # This will be overridden by subclasses to handle different project keys
     conditions = []
 
-    # Always filter by project key (default to PAN1 if not specified)
-    project = project_key || "PAN1"
-    conditions << "project = #{project}"
+    # Default project filter - should be overridden
+    project = project_key || get_default_project_key
+    if project.is_a?(Array)
+      project_list = project.map { |p| "\"#{p}\"" }.join(", ")
+      conditions << "project IN (#{project_list})"
+    else
+      conditions << "project = #{project}"
+    end
 
     # Exclude subtasks
     conditions << "issuetype != Subtask"
@@ -84,6 +90,11 @@ class JiraService
     end
 
     conditions.join(" AND ") + " ORDER BY created DESC"
+  end
+
+  def get_default_project_key
+    # Override in subclasses
+    raise NotImplementedError, "Subclasses must implement get_default_project_key"
   end
 
   def handle_response(response)

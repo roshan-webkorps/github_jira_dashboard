@@ -3,6 +3,7 @@
 # Table name: repositories
 #
 #  id          :bigint           not null, primary key
+#  app_type    :string           default("legacy"), not null
 #  description :text
 #  full_name   :string           not null
 #  language    :string
@@ -15,8 +16,13 @@
 #
 # Indexes
 #
+#  index_repositories_on_app_type   (app_type)
 #  index_repositories_on_full_name  (full_name) UNIQUE
 #  index_repositories_on_github_id  (github_id) UNIQUE
+#
+# Check Constraints
+#
+#  check_repository_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
 #
 class Repository < ApplicationRecord
   has_many :commits, dependent: :destroy

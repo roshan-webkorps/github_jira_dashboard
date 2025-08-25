@@ -3,6 +3,7 @@
 # Table name: tickets
 #
 #  id              :bigint           not null, primary key
+#  app_type        :string           default("legacy"), not null
 #  created_at_jira :datetime
 #  description     :text
 #  key             :string           not null
@@ -19,6 +20,7 @@
 #
 # Indexes
 #
+#  index_tickets_on_app_type      (app_type)
 #  index_tickets_on_developer_id  (developer_id)
 #  index_tickets_on_jira_id       (jira_id) UNIQUE
 #  index_tickets_on_key           (key) UNIQUE
@@ -27,6 +29,10 @@
 # Foreign Keys
 #
 #  fk_rails_...  (developer_id => developers.id)
+#
+# Check Constraints
+#
+#  check_ticket_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
 #
 class Ticket < ApplicationRecord
   belongs_to :developer, optional: true
