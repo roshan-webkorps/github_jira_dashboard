@@ -2,39 +2,39 @@ class JiraService
   include HTTParty
 
   def initialize
-    @base_uri = ENV['JIRA_URL']
+    @base_uri = ENV["JIRA_URL"]
     @options = {
       headers: {
-        'Content-Type' => 'application/json',
-        'Accept' => 'application/json'
+        "Content-Type" => "application/json",
+        "Accept" => "application/json"
       },
       basic_auth: {
-        username: ENV['JIRA_USERNAME'],
-        password: ENV['JIRA_API_TOKEN']
+        username: ENV["JIRA_USERNAME"],
+        password: ENV["JIRA_API_TOKEN"]
       }
     }
-    
+
     self.class.base_uri @base_uri
   end
 
   def fetch_projects
-    response = self.class.get('/rest/api/3/project', @options)
+    response = self.class.get("/rest/api/3/project", @options)
     handle_response(response)
   end
 
   def fetch_issues_paginated(project_key = nil, since = nil, start_at = 0, max_results = 100)
     jql = build_jql_query(project_key, since)
-    
-    response = self.class.get('/rest/api/3/search', @options.merge(
+
+    response = self.class.get("/rest/api/3/search", @options.merge(
       query: {
         jql: jql,
         startAt: start_at,
         maxResults: max_results,
-        fields: 'key,summary,description,status,priority,issuetype,assignee,creator,created,updated',
-        expand: 'changelog'
+        fields: "key,summary,description,status,priority,issuetype,assignee,creator,created,updated",
+        expand: "changelog"
       }
     ))
-    
+
     handle_response(response)
   end
 
@@ -46,16 +46,16 @@ class JiraService
   def fetch_issue_by_key(issue_key)
     response = self.class.get("/rest/api/3/issue/#{issue_key}", @options.merge(
       query: {
-        fields: 'key,summary,description,status,priority,issuetype,assignee,creator,created,updated',
-        expand: 'changelog'
+        fields: "key,summary,description,status,priority,issuetype,assignee,creator,created,updated",
+        expand: "changelog"
       }
     ))
-    
+
     handle_response(response)
   end
 
   def test_connection
-    response = self.class.get('/rest/api/3/myself', @options)
+    response = self.class.get("/rest/api/3/myself", @options)
     handle_response(response)
   end
 
@@ -63,20 +63,27 @@ class JiraService
 
   def build_jql_query(project_key, since)
     conditions = []
-    
+
     # Always filter by project key (default to PAN1 if not specified)
-    project = project_key || 'PAN1'
+    project = project_key || "PAN1"
     conditions << "project = #{project}"
-    
+
     # Exclude subtasks
     conditions << "issuetype != Subtask"
-    
+
     if since
-      formatted_date = since.strftime('%Y-%m-%d')
-      conditions << "created >= '#{formatted_date}'"
+      formatted_date = since.strftime("%Y-%m-%d")
+
+      # If since is more than 1 day ago, use created date
+      # If since is 1 day or less, use updated date
+      if since <= 1.day.ago
+        conditions << "updated >= '#{formatted_date}'"
+      else
+        conditions << "created >= '#{formatted_date}'"
+      end
     end
-    
-    conditions.join(' AND ') + ' ORDER BY created DESC'
+
+    conditions.join(" AND ") + " ORDER BY created DESC"
   end
 
   def handle_response(response)

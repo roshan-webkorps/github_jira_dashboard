@@ -1,9 +1,9 @@
 namespace :github do
   desc "Initial sync of GitHub data for the last year"
   task initial_sync: :environment do
-    puts "Starting initial GitHub data sync..."
-    
-    unless ENV['GITHUB_TOKEN']
+    puts "Starting initial GitHub data sync at #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}..."
+
+    unless ENV["GITHUB_TOKEN"]
       puts "ERROR: GITHUB_TOKEN environment variable is required"
       exit 1
     end
@@ -15,7 +15,7 @@ namespace :github do
       puts "Sync failed: #{result[:error]}"
       exit 1
     else
-      puts "Sync completed successfully!"
+      puts "Sync completed successfully at #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}!"
       puts "Repositories: #{result[:repositories]}"
       puts "Developers: #{result[:developers]}"
       puts "Commits: #{result[:commits]}"
@@ -25,9 +25,9 @@ namespace :github do
 
   desc "Incremental sync of GitHub data from the last day"
   task incremental_sync: :environment do
-    puts "Starting incremental GitHub data sync..."
-    
-    unless ENV['GITHUB_TOKEN']
+    puts "Starting incremental GitHub data sync at #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}..."
+
+    unless ENV["GITHUB_TOKEN"]
       puts "ERROR: GITHUB_TOKEN environment variable is required"
       exit 1
     end
@@ -39,7 +39,7 @@ namespace :github do
       puts "Sync failed: #{result[:error]}"
       exit 1
     else
-      puts "Sync completed successfully!"
+      puts "Sync completed successfully at #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}!"
       puts "Repositories: #{result[:repositories]}"
       puts "Developers: #{result[:developers]}"
       puts "Commits: #{result[:commits]}"
