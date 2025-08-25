@@ -867,3 +867,26 @@ body {
 .retry-btn:hover {
   background: #2980b9;
 }
+
+.ai-summary-section {
+  margin: 18px 0;
+  padding: 14px 18px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  font-size: 0.98rem;
+  color: #20335a;
+  /* Remove border-left and font-style */
+}
+
+.ai-summary-section .summary-title {
+  margin: 0 0 8px;
+  font-size: 1.03rem;
+  font-weight: 600;
+  color: #20335a;
+  /* No emoji, no flex alignment, simple style */
+}
+
+.ai-summary-section .summary-content {
+  margin: 0;
+  line-height: 1.55;
+}

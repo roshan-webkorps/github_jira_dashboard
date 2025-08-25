@@ -13,8 +13,16 @@ module AiQueryProcessor
       if parsed_response["sql"].present?
         results = execute_safe_query(parsed_response["sql"])
 
-        # Format results for frontend
-        format_query_results(results, parsed_response, user_query)
+        # Capture the formatted results
+        formatted_results = format_query_results(results, parsed_response, user_query)
+
+        # Generate AI summary if results exist
+        if formatted_results[:success] && results.any?
+          summary = generate_summary(user_query, results, parsed_response["description"])
+          formatted_results[:summary] = summary if summary
+        end
+
+        formatted_results
       else
         { error: "Could not generate a valid query from your request." }
       end
@@ -24,6 +32,21 @@ module AiQueryProcessor
     rescue => e
       Rails.logger.error "AI Query Error: #{e.message}"
       { error: "Sorry, I couldn't process your query. Please try rephrasing it." }
+    end
+  end
+
+  def generate_summary(user_query, results, description)
+    return nil if results.empty?
+
+    begin
+      summary_prompt = build_summary_prompt(user_query, results, description)
+      ai_response = call_summary_api(summary_prompt)
+
+      parsed_response = JSON.parse(ai_response)
+      parsed_response["summary"]
+    rescue => e
+      Rails.logger.error "Summary generation error: #{e.message}"
+      nil
     end
   end
 
@@ -96,11 +119,25 @@ module AiQueryProcessor
       Rules:
       1. ONLY SELECT queries - never INSERT/UPDATE/DELETE
       2. Always JOIN with developers table to show names, not IDs
-      3. Use PostgreSQL syntax: WHERE committed_at >= NOW() - INTERVAL '30 days'
+      3. When a time frame is **explicitly mentioned** in the query (e.g., "last 30 days", "last week", "in last 3 months"), use PostgreSQL syntax with WHERE clauses like:
+        - WHERE committed_at >= NOW() - INTERVAL '30 days'
+        - WHERE committed_at >= NOW() - INTERVAL '7 days'
+        - and so on, based on the time frame.
+        When the time frame is **not specified** or unclear, do **not** filter by date; include data from **all time**.
       4. Add LIMIT 10 for most queries, but LIMIT 1 for "the most", "highest", "top", "best" (singular requests)
       5. Use HAVING for aggregate conditions (e.g., COUNT() > 5)
       6. Use LEFT JOIN for "has X but not Y" queries
       7. Use subqueries when needed for complex logic
+
+      Performance Guidelines:
+      - Always write queries that are optimized for speed and efficiency.
+      - Use indexed columns (e.g. committed_at, opened_at, closed_at) for filtering by dates.
+      - Avoid unnecessary joins and retrieve only columns required for the query result.
+      - Prefer EXISTS or subqueries over heavy joins for exclusion or complex filters.
+      - Use LIMIT clauses to restrict large result sets. Default LIMIT 10 unless user specifies otherwise or requests single/top record.
+      - For time filtering, apply WHERE clauses only when timeframe is explicitly mentioned; otherwise, query all historical data.
+      - Order results meaningfully, typically descending by counts or dates.
+      - Avoid broad scans that could degrade performance on large datasets.
 
       Response Format (JSON only):
       {"sql": "SELECT ...", "description": "Human description", "chart_type": "bar"}
@@ -248,5 +285,64 @@ module AiQueryProcessor
       headers: results.first&.keys || [],
       rows: results.map(&:values)
     }
+  end
+
+  def build_summary_prompt(user_query, results, description)
+    data_summary = results.first(5).map do |row|
+      row.map { |k, v| "#{k}: #{v}" }.join(", ")
+    end.join("\n")
+
+    <<~PROMPT
+      You are an analytics assistant summarizing data from a GitHub and Jira dashboard.
+
+      User Query: "#{user_query}"
+      Query Description: "#{description}"
+
+      Results Data (first 5 rows):
+      #{data_summary}
+
+      Total Results: #{results.length}
+
+      Write a clear, helpful summary (2-4 sentences) that:
+      - States what data is shown and its timeframe
+      - Highlights standout values, patterns, or differences (not just the max)
+      - Provides useful **positive** context about what this means for the team or project
+
+      Respond with JSON only: {"summary": "your summary text here"}
+    PROMPT
+  end
+
+  def call_summary_api(prompt)
+    require "net/http"
+    require "json"
+
+    uri = URI("https://api.openai.com/v1/chat/completions")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+
+    request = Net::HTTP::Post.new(uri)
+    request["Authorization"] = "Bearer #{ENV['OPENAI_API_KEY']}"
+    request["Content-Type"] = "application/json"
+
+    request.body = {
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.3
+    }.to_json
+
+    response = http.request(request)
+
+    if response.code == "200"
+      result = JSON.parse(response.body)
+      result.dig("choices", 0, "message", "content")
+    else
+      raise "OpenAI API Error: #{response.code}"
+    end
   end
 end

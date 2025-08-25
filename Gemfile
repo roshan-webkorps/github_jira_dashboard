@@ -9,6 +9,7 @@ gem "jbuilder"
 gem "jsbundling-rails"
 gem "pg", "~> 1.1"
 gem "propshaft"
+gem "pry-rails", "~> 0.3.11"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.0.2"
 gem "tzinfo-data", platforms: %i[ windows jruby ]

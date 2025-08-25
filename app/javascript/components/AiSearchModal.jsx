@@ -62,6 +62,19 @@ const AiSearchModal = ({ isOpen, onClose, result, loading, error }) => {
     )
   }
 
+  const renderSummary = () => {
+    if (!result || !result.summary) return null
+
+    return (
+      <div className="ai-summary-section">
+        <h4 className="summary-title">Summary</h4>
+        <div className="summary-content">
+          <p className="summary-text">{result.summary}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -106,6 +119,8 @@ const AiSearchModal = ({ isOpen, onClose, result, loading, error }) => {
               <div className="result-content">
                 {renderChart()}
               </div>
+              
+              {renderSummary()}
               
               {result.raw_results && result.raw_results.length > 0 && (
                 <div className="result-summary">
