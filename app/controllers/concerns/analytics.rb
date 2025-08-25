@@ -27,7 +27,7 @@ module Analytics
 
   def get_pull_requests_data(since)
     prs = PullRequest.includes(:developer)
-                     .where("opened_at >= ?", since)
+                     .where("pull_requests.updated_at >= ?", since)
 
     if prs.empty?
       return { developers: {}, totals: { open: 0, closed_merged: 0 } }
@@ -60,7 +60,7 @@ module Analytics
 
   def get_tickets_data(since)
     tickets = Ticket.includes(:developer)
-                    .where("created_at_jira >= ?", since)
+                    .where("updated_at_jira >= ?", since) 
 
     if tickets.empty?
       return { developers: {}, totals: { todo: 0, in_progress: 0, done: 0, other: 0 }, developer_completed: {} }
@@ -154,7 +154,7 @@ module Analytics
 
   # NEW: Ticket Priority Distribution
   def get_ticket_priority_distribution_data(since)
-    priority_counts = Ticket.where("created_at_jira >= ?", since)
+    priority_counts = Ticket.where("updated_at_jira >= ?", since)
                            .group(:priority)
                            .count
 
@@ -494,7 +494,7 @@ module Analytics
   # NEW: Pull Request Activity by Developer - Now sorted by total activity
   def get_pull_request_activity_by_developer_data(since)
     prs = PullRequest.includes(:developer)
-                    .where("opened_at >= ?", since)
+                    .where("pull_requests.updated_at >= ?", since)
 
     if prs.empty?
       return {
@@ -555,7 +555,7 @@ module Analytics
   # FIXED: Ticket Type Completion by Developer - Now uses same logic as get_tickets_data
   def get_ticket_type_completion_data(since)
     tickets = Ticket.includes(:developer)
-                    .where("created_at_jira >= ?", since)
+                    .where("updated_at_jira >= ?", since)
 
     if tickets.empty?
       return {
