@@ -20,10 +20,6 @@
 #  index_repositories_on_full_name  (full_name) UNIQUE
 #  index_repositories_on_github_id  (github_id) UNIQUE
 #
-# Check Constraints
-#
-#  check_repository_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
-#
 class Repository < ApplicationRecord
   has_many :commits, dependent: :destroy
   has_many :pull_requests, dependent: :destroy

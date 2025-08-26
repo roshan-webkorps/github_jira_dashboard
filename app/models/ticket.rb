@@ -30,10 +30,6 @@
 #
 #  fk_rails_...  (developer_id => developers.id)
 #
-# Check Constraints
-#
-#  check_ticket_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
-#
 class Ticket < ApplicationRecord
   belongs_to :developer, optional: true
 

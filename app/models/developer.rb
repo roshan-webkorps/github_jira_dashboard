@@ -18,10 +18,6 @@
 #  index_developers_on_github_username_and_app_type  (github_username,app_type) UNIQUE
 #  index_developers_on_jira_username_and_app_type    (jira_username,app_type) UNIQUE
 #
-# Check Constraints
-#
-#  check_developer_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
-#
 class Developer < ApplicationRecord
   has_many :commits, dependent: :destroy
   has_many :pull_requests, dependent: :destroy

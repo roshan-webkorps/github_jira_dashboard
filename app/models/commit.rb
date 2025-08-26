@@ -27,10 +27,6 @@
 #  fk_rails_...  (developer_id => developers.id)
 #  fk_rails_...  (repository_id => repositories.id)
 #
-# Check Constraints
-#
-#  check_commit_type  (app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[]))
-#
 class Commit < ApplicationRecord
   belongs_to :developer
   belongs_to :repository
