@@ -54,7 +54,7 @@ module BaseAnalytics
 
   def get_pull_requests_data(since)
     prs = scoped_pull_requests.includes(:developer)
-                             .where("pull_requests.updated_at >= ?", since)
+                             .where("pull_requests.opened_at >= ?", since)
 
     if prs.empty?
       return { developers: {}, totals: { open: 0, closed_merged: 0 } }
@@ -87,16 +87,16 @@ module BaseAnalytics
 
   def get_tickets_data(since)
     tickets = scoped_tickets.includes(:developer)
-                           .where("updated_at_jira >= ?", since) 
+                           .where("updated_at_jira >= ?", since)
 
     if tickets.empty?
       return { developers: {}, totals: { todo: 0, in_progress: 0, done: 0, other: 0 }, developer_completed: {} }
     end
 
     # Group tickets by developer and status
-    todo_statuses = [ "To Do", "Open", "New", "Backlog" ]
-    in_progress_statuses = [ "In Progress", "In Review", "Testing", "Code Review" ]
-    done_statuses = [ "Done", "Closed", "Resolved", "Complete", "Deployed" ]
+    todo_statuses = [ "To Do", "Design To Do", "BLOCKED", "Blocked", "PUSHED BACK", "Pushed Back", "Need More Info", "No Response" ]
+    in_progress_statuses = [ "In Progress", "Code Review", "READY FOR REVIEW", "Ready for Review", "TESTING", "Testing", "APPROVED BY QA", "Approved by QA", "PRODUCT CHECK", "Product Check", "FEEDBACK" ]
+    done_statuses = [ "Done", "Deployed", "Deoployed To Demo", "Deployed To Demo", "Deployed to Demo", "Ready For Deploy", "Ready For Release", "Ready for Release" ]
 
     developer_data = {}
     developer_completed = {}
