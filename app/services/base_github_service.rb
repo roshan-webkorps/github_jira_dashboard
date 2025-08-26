@@ -107,6 +107,13 @@ class BaseGithubService
     handle_response(response)
   end
 
+  def fetch_commit_details(owner, repo, sha)
+    endpoint = "/repos/#{owner}/#{repo}/commits/#{sha}"
+
+    response = self.class.get(endpoint, @options)
+    handle_response(response)
+  end
+
   private
 
   def handle_response(response)

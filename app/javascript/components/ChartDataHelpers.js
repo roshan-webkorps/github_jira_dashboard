@@ -233,3 +233,46 @@ export const getTicketTypeCompletionData = (dashboardData) => {
   
   return dashboardData.charts_data.ticket_type_completion
 }
+
+export const getCodeImpactData = (dashboardData) => {
+  if (!dashboardData?.charts_data?.code_impact_by_developer) {
+    return {
+      labels: ['Loading...'],
+      datasets: [
+        { label: 'Lines Added', data: [0], backgroundColor: 'rgba(46, 204, 113, 0.6)' },
+        { label: 'Lines Deleted', data: [0], backgroundColor: 'rgba(231, 76, 60, 0.6)' }
+      ]
+    }
+  }
+  
+  return dashboardData.charts_data.code_impact_by_developer
+}
+
+export const getChangeEfficiencyData = (dashboardData) => {
+  if (!dashboardData?.charts_data?.change_efficiency) {
+    return {
+      datasets: [{ 
+        label: 'Efficiency', 
+        data: [{ x: 0, y: 0, r: 5 }], 
+        backgroundColor: 'rgba(52, 152, 219, 0.6)' 
+      }]
+    }
+  }
+  
+  return dashboardData.charts_data.change_efficiency
+}
+
+export const getCodeChangesByDeveloperAndRepoData = (dashboardData) => {
+  if (!dashboardData?.charts_data?.code_changes_by_developer_and_repo) {
+    return {
+      labels: ['Loading...'],
+      datasets: [{ 
+        label: 'Lines Changed', 
+        data: [0], 
+        backgroundColor: 'rgba(52, 152, 219, 0.6)' 
+      }]
+    }
+  }
+  
+  return dashboardData.charts_data.code_changes_by_developer_and_repo
+}

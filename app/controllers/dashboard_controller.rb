@@ -15,23 +15,38 @@ class DashboardController < ApplicationController
     # Extend with the appropriate analytics module
     extend get_analytics_module(app_type)
 
+    # Base charts that both app types have
+    base_charts = {
+      commits: get_commits_data(timeframe_start, timeframe),
+      pull_requests: get_pull_requests_data(timeframe_start),
+      tickets: get_tickets_data(timeframe_start),
+      activity_timeline: get_activity_timeline_data(timeframe_start, timeframe),
+      commits_per_repository: get_commits_per_repository_data(timeframe_start),
+      ticket_priority_distribution: get_ticket_priority_distribution_data(timeframe_start),
+      pull_request_activity_by_developer: get_pull_request_activity_by_developer_data(timeframe_start),
+      ticket_type_completion: get_ticket_type_completion_data(timeframe_start)
+    }
+
+    # Conditional charts based on app_type
+    if app_type == "legacy"
+      # Legacy gets code impact charts instead of language distribution and PR status
+      base_charts.merge!({
+        code_impact_by_developer: get_code_impact_by_developer_data(timeframe_start),
+        code_changes_by_developer_and_repo: get_code_changes_by_developer_and_repo_data(timeframe_start)
+      })
+    else
+      # Pioneer gets the original charts
+      base_charts.merge!({
+        language_distribution: get_language_distribution_data(timeframe_start),
+        # You can add PR status back if needed: pull_request_status: get_pr_status_data(timeframe_start)
+      })
+    end
+
     render json: {
       timeframe: timeframe,
       app_type: app_type,
       message: "Dashboard API is working!",
-      charts_data: {
-        commits: get_commits_data(timeframe_start, timeframe),
-        pull_requests: get_pull_requests_data(timeframe_start),
-        tickets: get_tickets_data(timeframe_start),
-        # Additional chart data
-        activity_timeline: get_activity_timeline_data(timeframe_start, timeframe),
-        commits_per_repository: get_commits_per_repository_data(timeframe_start),
-        ticket_priority_distribution: get_ticket_priority_distribution_data(timeframe_start),
-        language_distribution: get_language_distribution_data(timeframe_start),
-        # NEW: Additional metrics
-        pull_request_activity_by_developer: get_pull_request_activity_by_developer_data(timeframe_start),
-        ticket_type_completion: get_ticket_type_completion_data(timeframe_start)
-      },
+      charts_data: base_charts,
       summary: get_summary_data(timeframe_start, app_type),
       developer_stats: get_developer_stats(timeframe_start),
       repo_stats: get_repository_stats(timeframe_start)

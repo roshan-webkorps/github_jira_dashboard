@@ -22,7 +22,9 @@ import {
   TicketPriorityChart,
   LanguageDistributionChart,
   PullRequestActivityChart,
-  TicketTypeCompletionChart
+  TicketTypeCompletionChart,
+  CodeImpactChart,
+  CodeChangesByDeveloperAndRepoChart
 } from './ChartComponents'
 
 ChartJS.register(
@@ -280,10 +282,19 @@ const App = () => {
             <CommitsPerRepositoryChart dashboardData={dashboardData} />
           </div>
 
-          {/* Row 5: Status & Technology Overview */}
+          {/* Row 5: Conditional Charts based on app_type */}
           <div className="charts-grid-two">
-            <PullRequestStatusChart dashboardData={dashboardData} />
-            <LanguageDistributionChart dashboardData={dashboardData} />
+            {appType === 'legacy' ? (
+              <>
+                <CodeImpactChart dashboardData={dashboardData} />
+                <CodeChangesByDeveloperAndRepoChart dashboardData={dashboardData} />
+              </>
+            ) : (
+              <>
+                <PullRequestStatusChart dashboardData={dashboardData} />
+                <LanguageDistributionChart dashboardData={dashboardData} />
+              </>
+            )}
           </div>
         </div>
       </main>

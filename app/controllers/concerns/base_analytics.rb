@@ -667,4 +667,139 @@ module BaseAnalytics
 
     { labels: labels.reverse, datasets: developer_datasets.transform_values(&:reverse) }
   end
+
+  # Add these methods to your BaseAnalytics concern
+
+  def get_code_impact_by_developer_data(since)
+    commits = scoped_commits.includes(:developer)
+                            .where("committed_at >= ?", since)
+                            .where.not(additions: 0, deletions: 0) # Only commits with stats
+
+    if commits.empty?
+      return {
+        labels: [ "No Data" ],
+        datasets: [
+          { label: "Lines Added", data: [ 0 ], backgroundColor: "rgba(46, 204, 113, 0.6)" },
+          { label: "Lines Deleted", data: [ 0 ], backgroundColor: "rgba(231, 76, 60, 0.6)" }
+        ]
+      }
+    end
+
+    # Group by developer and sum additions/deletions
+    developer_stats = {}
+    commits.each do |commit|
+      next unless commit.developer
+
+      dev_name = commit.developer.name
+      developer_stats[dev_name] ||= { additions: 0, deletions: 0, commits: 0 }
+      developer_stats[dev_name][:additions] += commit.additions
+      developer_stats[dev_name][:deletions] += commit.deletions
+      developer_stats[dev_name][:commits] += 1
+    end
+
+    # Sort by total impact (additions + deletions) descending
+    sorted_developers = developer_stats.sort_by { |dev, stats| -(stats[:additions] + stats[:deletions]) }.to_h
+
+    # Prepare chart data
+    labels = sorted_developers.keys.map { |name| name.length > 12 ? "#{name[0...9]}..." : name }
+    additions_data = sorted_developers.values.map { |stats| stats[:additions] }
+    deletions_data = sorted_developers.values.map { |stats| stats[:deletions] }
+
+    {
+      labels: labels,
+      datasets: [
+        {
+          label: "Lines Added",
+          data: additions_data,
+          backgroundColor: "rgba(46, 204, 113, 0.6)",
+          borderColor: "rgba(46, 204, 113, 1)",
+          borderWidth: 1
+        },
+        {
+          label: "Lines Deleted",
+          data: deletions_data,
+          backgroundColor: "rgba(231, 76, 60, 0.6)",
+          borderColor: "rgba(231, 76, 60, 1)",
+          borderWidth: 1
+        }
+      ]
+    }
+  end
+
+  def get_code_changes_by_developer_and_repo_data(since)
+    commits = scoped_commits.includes(:developer, :repository)
+                            .where("committed_at >= ?", since)
+                            .where.not(additions: 0, deletions: 0) # Only commits with stats
+
+    if commits.empty?
+      return {
+        labels: [ "No Data" ],
+        datasets: [ {
+          label: "Lines Changed",
+          data: [ 0 ],
+          backgroundColor: "rgba(52, 152, 219, 0.6)"
+        } ]
+      }
+    end
+
+    # Group by developer and repository
+    developer_repo_stats = {}
+    commits.each do |commit|
+      next unless commit.developer && commit.repository
+
+      dev_name = commit.developer.name
+      repo_name = commit.repository.name
+
+      developer_repo_stats[dev_name] ||= {}
+      developer_repo_stats[dev_name][repo_name] ||= 0
+      developer_repo_stats[dev_name][repo_name] += (commit.additions + commit.deletions)
+    end
+
+    # Get all unique repositories for consistent coloring
+    all_repos = commits.map { |c| c.repository.name }.uniq.sort
+
+    # Color palette for repositories
+    colors = [
+      "rgba(52, 152, 219, 0.6)",   # Blue
+      "rgba(46, 204, 113, 0.6)",   # Green
+      "rgba(241, 196, 15, 0.6)",   # Yellow
+      "rgba(231, 76, 60, 0.6)",    # Red
+      "rgba(155, 89, 182, 0.6)",   # Purple
+      "rgba(230, 126, 34, 0.6)",   # Orange
+      "rgba(26, 188, 156, 0.6)",   # Turquoise
+      "rgba(149, 165, 166, 0.6)"   # Gray
+    ]
+
+    # Sort developers by total changes (descending)
+    sorted_developers = developer_repo_stats.sort_by do |dev, repos|
+      -repos.values.sum
+    end.to_h
+
+    # Prepare chart data
+    labels = sorted_developers.keys.map { |name| name.length > 12 ? "#{name[0...9]}..." : name }
+
+    # Create one dataset per repository
+    datasets = []
+    all_repos.each_with_index do |repo, index|
+      repo_data = sorted_developers.keys.map do |dev|
+        sorted_developers[dev][repo] || 0
+      end
+
+      # Only include repositories that have data
+      if repo_data.sum > 0
+        datasets << {
+          label: repo.length > 20 ? "#{repo[0...17]}..." : repo,
+          data: repo_data,
+          backgroundColor: colors[index % colors.length],
+          borderColor: colors[index % colors.length].gsub("0.6", "1"),
+          borderWidth: 1
+        }
+      end
+    end
+
+    {
+      labels: labels,
+      datasets: datasets
+    }
+  end
 end

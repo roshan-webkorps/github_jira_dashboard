@@ -1,6 +1,6 @@
 // ChartComponents.jsx - Individual chart components
 import React from 'react'
-import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import { Bar, Doughnut, Line, Bubble } from 'react-chartjs-2'
 import {
   getCommitsChartData,
   getActivityTimelineData,
@@ -11,7 +11,10 @@ import {
   getTicketStatusData,
   getCompletedTicketsData,
   getPullRequestActivityData,
-  getTicketTypeCompletionData
+  getTicketTypeCompletionData,
+  getCodeImpactData,
+  getCodeChangesByDeveloperAndRepoData,
+  getChangeEfficiencyData
 } from './ChartDataHelpers'
 
 const barChartOptions = {
@@ -156,6 +159,102 @@ const pieChartOptions = {
     },
   }
 }
+
+const bubbleChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        padding: 10,
+        font: {
+          size: 11
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+        usePointStyle: true
+      },
+      maxHeight: 60,
+    },
+    tooltip: {
+      callbacks: {
+        title: function(context) {
+          return context[0].raw.developer;
+        },
+        label: function(context) {
+          const point = context.raw;
+          return [
+            `Commits: ${point.x}`,
+            `Avg Lines/Commit: ${point.y}`,
+            `Repositories: ${Math.round(point.r / 3)}`
+          ];
+        }
+      }
+    }
+  },
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: 'Total Commits'
+      },
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    },
+    y: {
+      title: {
+        display: true,
+        text: 'Avg Lines Changed per Commit'
+      },
+      ticks: {
+        font: {
+          size: 10
+        }
+      }
+    }
+  }
+}
+
+export const CodeImpactChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Number of Lines Added/Removed by Developer</h3>
+    <div className="chart-with-legend">
+      <Bar data={getCodeImpactData(dashboardData)} options={barChartOptions} />
+    </div>
+  </div>
+)
+
+export const CodeChangesByDeveloperAndRepoChart = ({ dashboardData }) => (
+  <div className="chart-container">
+    <h3>Code Changes by Developer & Repository</h3>
+    <div className="chart-with-legend">
+      <Bar 
+        data={getCodeChangesByDeveloperAndRepoData(dashboardData)} 
+        options={{
+          ...stackedBarChartOptions,
+          plugins: {
+            ...stackedBarChartOptions.plugins,
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                  return context[0].label;
+                },
+                label: function(context) {
+                  const repoName = context.dataset.label;
+                  return `${repoName}: ${context.parsed.y} lines changed`;
+                }
+              }
+            }
+          }
+        }} 
+      />
+    </div>
+  </div>
+)
 
 export const CommitActivityChart = ({ dashboardData }) => (
   <div className="chart-container">

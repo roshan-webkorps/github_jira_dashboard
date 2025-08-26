@@ -79,6 +79,10 @@ class BaseGithubSyncService
 
     Rails.logger.info "API fetch took #{api_time.round(2)} seconds, got #{commits.count} commits"
 
+    # Check if we should fetch detailed stats for this app type
+    fetch_stats = should_fetch_commit_stats?
+    Rails.logger.info "#{fetch_stats ? 'Will fetch' : 'Skipping'} detailed commit stats for app_type: #{get_app_type}"
+
     count = 0
     db_start = Time.current
     commits.each do |commit_data|
@@ -90,7 +94,12 @@ class BaseGithubSyncService
       next unless developer
 
       # Create or update commit
-      commit = upsert_commit(commit_data, developer, repository)
+      if fetch_stats
+        commit = upsert_commit_with_stats(commit_data, developer, repository)
+      else
+        commit = upsert_commit(commit_data, developer, repository)
+      end
+
       count += 1 if commit.persisted?
     end
     db_time = Time.current - db_start
@@ -140,6 +149,11 @@ class BaseGithubSyncService
 
   def get_app_type
     raise NotImplementedError, "Subclasses must implement get_app_type"
+  end
+
+  # Determine if we should fetch detailed commit stats based on app_type
+  def should_fetch_commit_stats?
+    get_app_type == "legacy"
   end
 
   private
@@ -203,6 +217,43 @@ class BaseGithubSyncService
       committed_at: Time.parse(commit_data["commit"]["author"]["date"]),
       additions: 0, # We'll enhance this later if needed
       deletions: 0
+    )
+
+    commit.save
+    commit
+  end
+
+  # Enhanced commit creation that fetches detailed stats from GitHub API
+  def upsert_commit_with_stats(commit_data, developer, repository)
+    commit = Commit.find_or_initialize_by(
+      sha: commit_data["sha"],
+      app_type: get_app_type
+    )
+
+    # If commit already exists and has stats, don't fetch again
+    if commit.persisted? && (commit.additions > 0 || commit.deletions > 0)
+      return commit
+    end
+
+    # Fetch detailed commit info with stats
+    detailed_commit = @github.fetch_commit_details(repository.owner, repository.name, commit_data["sha"])
+
+    stats = {}
+    if detailed_commit.is_a?(Hash) && detailed_commit[:error]
+      Rails.logger.error "Failed to fetch commit details for #{commit_data['sha']}: #{detailed_commit[:error]}"
+      # Fall back to basic data without stats
+      stats = { "additions" => 0, "deletions" => 0 }
+    else
+      stats = detailed_commit["stats"] || { "additions" => 0, "deletions" => 0 }
+    end
+
+    commit.assign_attributes(
+      message: commit_data["commit"]["message"],
+      developer: developer,
+      repository: repository,
+      committed_at: Time.parse(commit_data["commit"]["author"]["date"]),
+      additions: stats["additions"] || 0,
+      deletions: stats["deletions"] || 0
     )
 
     commit.save
