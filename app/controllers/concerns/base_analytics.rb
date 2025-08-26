@@ -276,7 +276,7 @@ module BaseAnalytics
 
   def get_pull_request_activity_by_developer_data(since)
     prs = scoped_pull_requests.includes(:developer)
-                             .where("pull_requests.updated_at >= ?", since)
+                             .where("pull_requests.opened_at >= ?", since)
 
     if prs.empty?
       return {
