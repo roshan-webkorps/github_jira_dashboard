@@ -1,5 +1,6 @@
 class DashboardController < ApplicationController
   include AiQueryProcessor
+  include BedrockAiQueryProcessor
 
   skip_before_action :verify_authenticity_token, only: [ :ai_query ]
 
@@ -63,7 +64,8 @@ class DashboardController < ApplicationController
       return
     end
 
-    result = process_ai_query(user_query, app_type)
+    # result = process_ai_query(user_query, app_type)
+    result = process_bedrock_ai_query(user_query, app_type)
 
     if result[:error]
       render json: result, status: 400

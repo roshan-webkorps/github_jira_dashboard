@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
 gem "annotaterb"
+gem "aws-sdk-bedrockruntime"
 gem "bootsnap", require: false
 gem "cssbundling-rails"
 gem "dotenv-rails"
