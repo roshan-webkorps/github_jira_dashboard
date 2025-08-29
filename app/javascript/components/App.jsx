@@ -11,7 +11,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import AiSearchModal from './AiSearchModal'
+import AiChatModal from './AiChatModal'  // Updated chat component
+import chatApiService from './chatApiService'  // API service
 import {
   CommitActivityChart,
   CompletedTicketsChart,
@@ -46,12 +47,8 @@ const App = () => {
   const [timeframe, setTimeframe] = useState('24h')
   const [appType, setAppType] = useState('legacy')
   
-  // AI Search states
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [searchResult, setSearchResult] = useState(null)
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [searchError, setSearchError] = useState(null)
+  // AI Chat states - Updated for conversational interface
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const timeframeOptions = [
     { value: '24h', label: '24 Hours' },
@@ -94,46 +91,32 @@ const App = () => {
     setAppType(newAppType)
   }
 
-  // AI Search handlers
-  const handleSearchSubmit = async (e) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
+  // AI Chat handlers - Updated for conversational interface
+  const handleOpenChat = () => {
+    setIsChatOpen(true)
+  }
 
-    setSearchLoading(true)
-    setSearchError(null)
-    setSearchResult(null)
-    setIsModalOpen(true)
+  const handleCloseChat = () => {
+    setIsChatOpen(false)
+  }
 
+  // This function will be passed to the chat modal
+  const handleChatQuery = async (query, chatService) => {
     try {
-      const response = await fetch('/api/ai-query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          query: searchQuery,
-          app_type: appType 
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process query')
-      }
-
-      setSearchResult(data)
-    } catch (err) {
-      setSearchError(err.message)
-    } finally {
-      setSearchLoading(false)
+      const currentAppType = chatApiService.getCurrentAppType()
+      const result = await chatApiService.sendQuery(query, currentAppType, chatService)
+      return result
+    } catch (error) {
+      throw error
     }
   }
 
-  const handleModalClose = () => {
-    setIsModalOpen(false)
-    setSearchResult(null)
-    setSearchError(null)
+  const handleNewTopic = async () => {
+    try {
+      await chatApiService.resetChat()
+    } catch (error) {
+      console.error('Failed to reset chat:', error)
+    }
   }
 
   if (loading) {
@@ -164,24 +147,15 @@ const App = () => {
             <h1>GitHub & Jira Dashboard</h1>
           </div>
           
-          {/* AI Search Bar */}
+          {/* AI Chat Button - Replaces search bar */}
           <div className="search-section">
-            <form onSubmit={handleSearchSubmit} className="search-form">
-              <div className="search-input-container">
-                <input
-                  type="text"
-                  placeholder="Ask about your data... e.g., 'top developers by commits'"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
-                <button type="submit" className="search-btn" disabled={!searchQuery.trim()}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </form>
+            <button 
+              className="open-chat-btn"
+              onClick={handleOpenChat}
+            >
+              <span className="search-icon">🔍</span>
+              Ask AI about your data...
+            </button>
           </div>
           
           <div className="controls-section">
@@ -299,13 +273,12 @@ const App = () => {
         </div>
       </main>
       
-      {/* AI Search Modal */}
-      <AiSearchModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        result={searchResult}
-        loading={searchLoading}
-        error={searchError}
+      {/* AI Chat Modal - Updated */}
+      <AiChatModal
+        isOpen={isChatOpen}
+        onClose={handleCloseChat}
+        onQuery={handleChatQuery}
+        onNewTopic={handleNewTopic}
       />
     </div>
   )

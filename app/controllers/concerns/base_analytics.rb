@@ -392,11 +392,17 @@ module BaseAnalytics
       }
     end
 
+    # Sort priorities in the desired order
+    priority_order = [ "Highest", "High", "Medium", "Low", "Lowest", "No Priority" ]
+    sorted_priorities = priority_developer_counts.keys.sort_by do |priority|
+      priority_order.index(priority) || priority_order.length
+    end
+
     # Build datasets - one dataset per developer (only those with completed tickets)
     datasets = []
     all_developers.each do |developer|
       data = []
-      priority_developer_counts.keys.sort.each do |priority|
+      sorted_priorities.each do |priority|
         count = priority_developer_counts[priority][developer] || 0
         data << count
       end
@@ -414,7 +420,7 @@ module BaseAnalytics
     end
 
     {
-      labels: priority_developer_counts.keys.sort,
+      labels: sorted_priorities,
       datasets: datasets
     }
   end
@@ -459,21 +465,38 @@ module BaseAnalytics
   end
 
   def group_activity_by_days(commits, tickets, since)
-    labels = (6.downto(0)).map { |days_ago| (Date.current - days_ago.days).strftime("%a") }
+    weekdays = []
+    current_date = Date.current
+
+    # Go back and collect the last 7 weekdays
+    days_back = 0
+    while weekdays.length < 7
+      check_date = current_date - days_back.days
+      unless check_date.saturday? || check_date.sunday?
+        weekdays.unshift(check_date)
+      end
+      days_back += 1
+    end
+
+    labels = weekdays.map { |date| date.strftime("%m/%d") }
 
     commit_data = Array.new(7, 0)
     ticket_data = Array.new(7, 0)
 
     commits.each do |commit|
-      days_ago = (Date.current - commit.committed_at.to_date).to_i
-      day_index = 6 - days_ago
-      commit_data[day_index] += 1 if day_index >= 0 && day_index < 7
+      commit_date = commit.committed_at.to_date
+      next if commit_date.saturday? || commit_date.sunday?
+
+      day_index = weekdays.find_index(commit_date)
+      commit_data[day_index] += 1 if day_index
     end
 
     tickets.each do |ticket|
-      days_ago = (Date.current - ticket.updated_at_jira.to_date).to_i
-      day_index = 6 - days_ago
-      ticket_data[day_index] += 1 if day_index >= 0 && day_index < 7
+      ticket_date = ticket.updated_at_jira.to_date
+      next if ticket_date.saturday? || ticket_date.sunday?
+
+      day_index = weekdays.find_index(ticket_date)
+      ticket_data[day_index] += 1 if day_index
     end
 
     { labels: labels, commit_data: commit_data, ticket_data: ticket_data }
@@ -541,10 +564,21 @@ module BaseAnalytics
     labels = []
     developer_datasets = {}
 
-    (6.downto(0)).each do |days_ago|
-      date = Date.current - days_ago.days
-      labels << date.strftime("%a")
+    # Generate the last 7 weekdays
+    weekdays = []
+    current_date = Date.current
+
+    # Go back and collect the last 7 weekdays
+    days_back = 0
+    while weekdays.length < 7
+      check_date = current_date - days_back.days
+      unless check_date.saturday? || check_date.sunday?
+        weekdays.unshift(check_date)
+      end
+      days_back += 1
     end
+
+    labels = weekdays.map { |date| date.strftime("%m/%d") }
 
     # Initialize datasets for each developer
     developer_names = commits.joins(:developer).pluck("developers.name").uniq
@@ -552,15 +586,17 @@ module BaseAnalytics
       developer_datasets[name] = Array.new(7, 0)
     end
 
-    # Count commits by developer and day
+    # Count commits by developer and weekday only
     commits.each do |commit|
       commit_date = commit.committed_at.to_date
-      days_ago = (Date.current - commit_date).to_i
 
-      # Map days_ago to array index (0 = 6 days ago, 6 = today)
-      day_index = 6 - days_ago
+      # Skip weekend commits
+      next if commit_date.saturday? || commit_date.sunday?
 
-      if day_index >= 0 && day_index < 7 && commit.developer
+      # Find the index of this date in our weekdays array
+      day_index = weekdays.find_index(commit_date)
+
+      if day_index && commit.developer
         developer_datasets[commit.developer.name][day_index] += 1
       end
     end
