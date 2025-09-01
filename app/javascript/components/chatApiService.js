@@ -4,7 +4,7 @@ class ChatApiService {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
   }
 
-  async sendQuery(query, appType = 'legacy', chatService = null) {
+  async sendQuery(query, appType = 'pioneer', chatService = null) {
     const response = await fetch('/api/ai-query', {
       method: 'POST',
       headers: {
@@ -57,7 +57,7 @@ class ChatApiService {
   // Helper method to get current app type from the page
   getCurrentAppType() {
     const appTypeSelect = document.querySelector('#appType');
-    return appTypeSelect?.value || 'legacy';
+    return appTypeSelect?.value || 'pioneer';
   }
 
   // Helper to get current timeframe if needed for context

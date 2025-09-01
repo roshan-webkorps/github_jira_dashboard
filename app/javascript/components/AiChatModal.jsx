@@ -361,21 +361,15 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
                   <div className="example-queries">
                     <button 
                       className="example-query"
-                      onClick={() => handleExampleClick("Top 5 most active developers")}
+                      onClick={() => handleExampleClick("Top 5 most active developers in last 1 month")}
                     >
-                      "Top 5 most active developers"
+                      "Top 5 most active developers in last 1 month"
                     </button>
                     <button 
                       className="example-query"
                       onClick={() => handleExampleClick("Show me open tickets")}
                     >
                       "Show me open tickets"
-                    </button>
-                    <button 
-                      className="example-query"
-                      onClick={() => handleExampleClick("Which repos need attention?")}
-                    >
-                      "Which repos need attention?"
                     </button>
                   </div>
                 </div>

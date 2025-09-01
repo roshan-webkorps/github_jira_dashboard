@@ -7,7 +7,7 @@ module BedrockAiQueryProcessor
     temperature: 0.1
   }.freeze
 
-  def process_bedrock_ai_query(user_query, app_type = "legacy", chat_service = nil)
+  def process_bedrock_ai_query(user_query, app_type = "pioneer", chat_service = nil)
     begin
       Rails.logger.info "=== BEDROCK QUERY PROCESSING ==="
       Rails.logger.info "User Query: #{user_query}"
@@ -70,9 +70,9 @@ module BedrockAiQueryProcessor
 
   def is_data_query?(user_query)
     data_keywords = [
-      "show", "list", "find", "get", "top", "most", "least", "how many", "count",
-      "commits", "pull requests", "tickets", "developers", "repositories", "repos",
-      "activity", "stats", "metrics", "performance", "open", "closed", "completed"
+      "show", "list", "find", "get", "top", "most", "least", "how many", "count", "features",
+      "commits", "pull requests", "tickets", "developers", "repositories", "repos", "month",
+      "activity", "stats", "metrics", "performance", "open", "closed", "completed", "year"
     ]
 
     query_lower = user_query.downcase
@@ -148,6 +148,14 @@ module BedrockAiQueryProcessor
 
       CRITICAL FILTERING RULE:
       - ALWAYS add "app_type = '#{app_type}'" to ALL table queries
+
+      DEFAULT TIME FRAME RULE:
+      - Unless a specific time frame is mentioned in the query, ALWAYS filter data to the last 1 month
+      - For commits: use "committed_at >= NOW() - INTERVAL '1 month'"
+      - For pull_requests: use "opened_at >= NOW() - INTERVAL '1 month'" (or closed_at/merged_at if query is about closed/merged PRs)
+      - For tickets: use "created_at_jira >= NOW() - INTERVAL '1 month'" (or updated_at_jira if query is about updates)
+      - If user specifies a different time frame (e.g., "last 6 months", "this year", "last week"), use that instead
+      - If query asks for "all time" or "ever" or similar, don't apply time filtering
 
       Rules:
       1. ONLY SELECT queries - never INSERT/UPDATE/DELETE
@@ -350,6 +358,27 @@ module BedrockAiQueryProcessor
     PROMPT
 
     prompt_parts.join("\n")
+  end
+
+  def call_bedrock_api_conversational(prompt)
+    client = initialize_bedrock_client
+
+    request_body = {
+      anthropic_version: "bedrock-2023-05-31",
+      max_tokens: 300,
+      temperature: 0.3,
+      system: "You are a helpful assistant for development team management. Provide concise, actionable advice.",
+      messages: [ { role: "user", content: prompt } ]
+    }
+
+    response = client.invoke_model({
+      model_id: MODEL_CONFIG[:model_id],
+      body: request_body.to_json,
+      content_type: "application/json"
+    })
+
+    response_body = JSON.parse(response.body.read)
+    response_body.dig("content", 0, "text")&.strip
   end
 
   def call_bedrock_api(user_query, app_type, schema_context = "", conversation_context = "")

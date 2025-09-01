@@ -14,7 +14,7 @@ class DashboardController < ApplicationController
     session.delete(:chat_service) if request.get? && request.path == "/api/dashboard"
 
     timeframe = params[:timeframe] || "24h"
-    app_type = params[:app_type] || "legacy"
+    app_type = params[:app_type] || "pioneer"
     timeframe_start = calculate_timeframe_start(timeframe)
 
     # Extend with the appropriate analytics module
@@ -61,7 +61,7 @@ class DashboardController < ApplicationController
   # AI Query endpoint
   def ai_query
     user_query = params[:query]
-    app_type = params[:app_type] || "legacy"
+    app_type = params[:app_type] || "pioneer"
 
     if user_query.blank?
       render json: { error: "Query cannot be empty" }, status: 400

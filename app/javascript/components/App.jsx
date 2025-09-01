@@ -45,7 +45,7 @@ const App = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('24h')
-  const [appType, setAppType] = useState('legacy')
+  const [appType, setAppType] = useState('pioneer')
   
   // AI Chat states - Updated for conversational interface
   const [isChatOpen, setIsChatOpen] = useState(false)
