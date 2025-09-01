@@ -159,10 +159,11 @@ module BedrockAiQueryProcessor
       - ALWAYS add "app_type = '#{app_type}'" to ALL table queries
 
       COMPARISON QUERY RULES:
-      - For time comparisons, create separate simple queries or use CASE statements carefully
+      - For time comparisons like "January vs March" or "Q1 vs Q2", create AGGREGATE totals, not per-developer breakdowns
       - NEVER reference column aliases in ORDER BY - use column numbers instead
-      - For "compare X vs Y" queries, use CASE WHEN with SUM/COUNT
-      - Always use ORDER BY with column numbers (ORDER BY 1, 2, 3) not alias names
+      - For "compare X vs Y" queries, return just TWO rows: one for each time period
+      - Use UNION to combine separate time period queries into aggregate results
+      - Format: SELECT 'Period Name' as period, COUNT/SUM as total
 
       DEFAULT TIME FRAME RULE:
       - Unless a specific time frame is mentioned in the query, ALWAYS filter data to the last 1 month
@@ -179,8 +180,9 @@ module BedrockAiQueryProcessor
       3. ALWAYS filter by app_type = '#{app_type}' for ALL tables
       4. Use simple column names in SELECT - no quoted aliases
       5. Use ORDER BY with numbers: ORDER BY 1 DESC, not ORDER BY alias_name DESC
-      6. Use appropriate LIMIT: LIMIT 5 for top/most queries, LIMIT 10 for lists, no LIMIT for counts
-      7. For ticket statuses, use proper mapping:
+      6. For UNION queries, ensure both SELECT statements have identical column structure
+      7. Use appropriate LIMIT: LIMIT 5 for top/most queries, LIMIT 10 for lists, no LIMIT for counts or comparisons
+      8. For ticket statuses, use proper mapping:
         - "closed/completed/done" = status IN ('Done', 'Deployed', 'Ready For Release')
         - "open/pending/todo" = status IN ('To Do', 'BLOCKED', 'Need More Info')
         - "in progress/active" = status IN ('In Progress', 'Code Review', 'Testing')
@@ -190,8 +192,8 @@ module BedrockAiQueryProcessor
       Simple query:
       {"sql": "SELECT d.name, COUNT(pr.id) as pr_count FROM developers d JOIN pull_requests pr ON d.id = pr.developer_id WHERE pr.app_type = 'pioneer' AND d.app_type = 'pioneer' AND pr.merged_at >= NOW() - INTERVAL '1 month' AND pr.merged_at IS NOT NULL GROUP BY d.name ORDER BY 2 DESC LIMIT 5", "description": "Top 5 developers with most merged pull requests this month", "chart_type": "bar"}
 
-      Comparison query:
-      {"sql": "SELECT d.name, SUM(CASE WHEN c.committed_at >= '2025-01-01' AND c.committed_at < '2025-02-01' THEN 1 ELSE 0 END) as jan_commits, SUM(CASE WHEN c.committed_at >= '2025-03-01' AND c.committed_at < '2025-04-01' THEN 1 ELSE 0 END) as mar_commits FROM developers d JOIN commits c ON d.id = c.developer_id WHERE d.app_type = 'pioneer' AND c.app_type = 'pioneer' AND c.committed_at >= '2025-01-01' AND c.committed_at < '2025-04-01' GROUP BY d.name ORDER BY 2 + 3 DESC", "description": "Developer commit comparison between January and March 2025", "chart_type": "bar"}
+      Comparison query (AGGREGATE format):
+      {"sql": "SELECT 'January' as period, COUNT(c.id) as total FROM commits c JOIN developers d ON c.developer_id = d.id WHERE c.app_type = 'pioneer' AND d.app_type = 'pioneer' AND c.committed_at >= '2025-01-01' AND c.committed_at < '2025-02-01' UNION SELECT 'March' as period, COUNT(c.id) as total FROM commits c JOIN developers d ON c.developer_id = d.id WHERE c.app_type = 'pioneer' AND d.app_type = 'pioneer' AND c.committed_at >= '2025-03-01' AND c.committed_at < '2025-04-01'", "description": "Total commit comparison between January and March 2025", "chart_type": "bar"}
 
       Chart types: "bar" for rankings/counts, "pie" for distributions, "table" for lists.
 
