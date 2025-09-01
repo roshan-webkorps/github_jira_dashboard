@@ -59,8 +59,8 @@ const App = () => {
   ]
 
   const appTypeOptions = [
-    { value: 'legacy', label: 'Legacy App' },
-    { value: 'pioneer', label: 'Pioneer App' }
+    { value: 'pioneer', label: 'Pioneer App' },
+    { value: 'legacy', label: 'Legacy App' }
   ]
 
   useEffect(() => {
