@@ -1469,3 +1469,59 @@ body {
   max-height: 60vh;
   overflow-y: auto;
 }
+
+/* CSS improvements for charts with many developers */
+
+/* Style for chart notes - made smaller and more subtle */
+.chart-note {
+  font-size: 0.75rem;
+  color: #888;
+  font-style: italic;
+  margin: 0.25rem 0 0.75rem 0;
+  padding: 0.25rem 0.5rem;
+  background-color: #f8f9fa;
+  border-left: 2px solid #dee2e6;
+  border-radius: 0 3px 3px 0;
+}
+
+/* General chart container improvements */
+.chart-container {
+  margin-bottom: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1.5rem;
+}
+
+.chart-with-legend {
+  position: relative;
+  height: 350px;
+  width: 100%;
+}
+
+/* Ensure pie charts maintain good proportions */
+.pie-chart-container .pie-chart-wrapper {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .commit-activity-chart .chart-with-legend {
+    height: 400px !important;
+  }
+  
+  .chart-with-legend {
+    height: 300px;
+  }
+}
+
+/* Style for chart titles */
+.chart-container h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+}

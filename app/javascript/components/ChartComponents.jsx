@@ -1,4 +1,4 @@
-// ChartComponents.jsx - Individual chart components
+// ChartComponents.jsx - Individual chart components with improved legend handling
 import React from 'react'
 import { Bar, Doughnut, Line, Bubble } from 'react-chartjs-2'
 import {
@@ -62,15 +62,15 @@ const stackedBarChartOptions = {
     legend: {
       position: 'bottom',
       labels: {
-        padding: 8,
+        padding: 4,
         usePointStyle: true,
         font: {
-          size: 10
+          size: 9
         },
-        boxWidth: 12,
-        boxHeight: 12,
+        boxWidth: 10,
+        boxHeight: 10,
       },
-      maxHeight: 80,
+      maxHeight: 80, // Reduced to prevent cutoff
     },
     tooltip: {
       callbacks: {
@@ -256,14 +256,25 @@ export const CodeChangesByDeveloperAndRepoChart = ({ dashboardData }) => (
   </div>
 )
 
-export const CommitActivityChart = ({ dashboardData }) => (
-  <div className="chart-container">
-    <h3>Commit Activity by Developer</h3>
-    <div className="chart-with-legend">
-      <Bar data={getCommitsChartData(dashboardData)} options={stackedBarChartOptions} />
+export const CommitActivityChart = ({ dashboardData }) => {
+  const totalDevelopers = dashboardData?.charts_data?.commits?.datasets 
+    ? Object.keys(dashboardData.charts_data.commits.datasets).length 
+    : 0;
+
+  return (
+    <div className="chart-container">
+      <h3>Commit Activity by Developer</h3>
+      {totalDevelopers > 10 && (
+        <p className="chart-note">
+          Showing top 10 developers by total commits ({totalDevelopers} total developers)
+        </p>
+      )}
+      <div className="chart-with-legend">
+        <Bar data={getCommitsChartData(dashboardData)} options={stackedBarChartOptions} />
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 export const CompletedTicketsChart = ({ dashboardData }) => (
   <div className="chart-container">

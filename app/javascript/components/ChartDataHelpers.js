@@ -11,6 +11,8 @@ export const getCommitsChartData = (dashboardData) => {
   const { labels, datasets } = dashboardData.charts_data.commits
   
   const chartDatasets = []
+  
+  // Extended color palette for 10 developers
   const colors = [
     'rgba(52, 152, 219, 0.6)',   // Blue
     'rgba(46, 204, 113, 0.6)',   // Green  
@@ -18,25 +20,34 @@ export const getCommitsChartData = (dashboardData) => {
     'rgba(231, 76, 60, 0.6)',    // Red
     'rgba(155, 89, 182, 0.6)',   // Purple
     'rgba(230, 126, 34, 0.6)',   // Orange
+    'rgba(26, 188, 156, 0.6)',   // Turquoise
+    'rgba(52, 73, 94, 0.6)',     // Dark Gray
+    'rgba(22, 160, 133, 0.6)',   // Green Sea
+    'rgba(39, 174, 96, 0.6)',    // Emerald
   ]
   
   let colorIndex = 0
+  
+  // Sort developers by total commits (descending) and limit to top 10
   const sortedDevelopers = Object.entries(datasets)
     .map(([name, data]) => ({ name, data, total: data.reduce((sum, count) => sum + count, 0) }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 6)
+    .slice(0, 10) // Show top 10 developers with most commits
   
   sortedDevelopers.forEach(({ name, data, total }) => {
-    const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name
-    
-    chartDatasets.push({
-      label: `${displayName} (${total})`,
-      data: data,
-      backgroundColor: colors[colorIndex % colors.length],
-      borderColor: colors[colorIndex % colors.length].replace('0.6', '1'),
-      borderWidth: 1,
-    })
-    colorIndex++
+    // Only include developers with at least 1 commit to avoid clutter
+    if (total > 0) {
+      const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name
+      
+      chartDatasets.push({
+        label: `${displayName} (${total})`,
+        data: data,
+        backgroundColor: colors[colorIndex % colors.length],
+        borderColor: colors[colorIndex % colors.length].replace('0.6', '1').replace('0.4', '1'),
+        borderWidth: 1,
+      })
+      colorIndex++
+    }
   })
   
   return { labels, datasets: chartDatasets }
