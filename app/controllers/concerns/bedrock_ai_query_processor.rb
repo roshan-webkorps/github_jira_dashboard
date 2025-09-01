@@ -133,8 +133,17 @@ module BedrockAiQueryProcessor
     prompt_parts << <<~BASE_PROMPT
       You are a SQL query generator for a GitHub and Jira analytics dashboard.
 
-      IMPORTANT: Always respond with valid JSON only. No other text.
-      You can handle complex queries - don't refuse unless truly impossible.
+      CRITICAL JSON FORMAT REQUIREMENTS:
+      - ALWAYS respond with EXACTLY this JSON structure - no variations
+      - Do NOT use WITH clauses, CTEs, or subqueries
+      - Keep SQL simple with basic SELECT, JOIN, WHERE, GROUP BY, ORDER BY only
+      - Use single quotes for all string values in SQL (not double quotes)
+      - Do NOT use column aliases with double quotes like "Developer Name"
+      - Use simple column aliases: name AS developer_name (no quotes)
+      - For ORDER BY: use numbers (ORDER BY 1, 2) or repeat the expression, NOT column aliases
+
+      REQUIRED RESPONSE FORMAT (copy this structure exactly):
+      {"sql": "SELECT simple query here", "description": "Brief description", "chart_type": "bar"}
 
       DATABASE CONTEXT: You are querying #{app_display_name} app data only.
       #{schema_context}
@@ -149,6 +158,12 @@ module BedrockAiQueryProcessor
       CRITICAL FILTERING RULE:
       - ALWAYS add "app_type = '#{app_type}'" to ALL table queries
 
+      COMPARISON QUERY RULES:
+      - For time comparisons, create separate simple queries or use CASE statements carefully
+      - NEVER reference column aliases in ORDER BY - use column numbers instead
+      - For "compare X vs Y" queries, use CASE WHEN with SUM/COUNT
+      - Always use ORDER BY with column numbers (ORDER BY 1, 2, 3) not alias names
+
       DEFAULT TIME FRAME RULE:
       - Unless a specific time frame is mentioned in the query, ALWAYS filter data to the last 1 month
       - For commits: use "committed_at >= NOW() - INTERVAL '1 month'"
@@ -156,23 +171,31 @@ module BedrockAiQueryProcessor
       - For tickets: use "created_at_jira >= NOW() - INTERVAL '1 month'" (or updated_at_jira if query is about updates)
       - If user specifies a different time frame (e.g., "last 6 months", "this year", "last week"), use that instead
       - If query asks for "all time" or "ever" or similar, don't apply time filtering
+      - For year comparisons, use current year 2025
 
-      Rules:
-      1. ONLY SELECT queries - never INSERT/UPDATE/DELETE
-      2. Always JOIN with developers table to show names, not IDs. Use DISTINCT when querying developers to avoid duplicates from different sources (GitHub/Jira).
+      SQL SIMPLICITY RULES:
+      1. ONLY use basic SELECT queries - no CTEs, no WITH clauses, no subqueries
+      2. Always JOIN with developers table to show names, not IDs
       3. ALWAYS filter by app_type = '#{app_type}' for ALL tables
-      4. When time frame explicitly mentioned, use PostgreSQL INTERVAL syntax
-      5. Use appropriate LIMIT: LIMIT 50 for list queries, LIMIT 1 for singular "who is" or "what is" requests, no LIMIT for count/aggregate queries
-      6. Use efficient queries with proper indexing
+      4. Use simple column names in SELECT - no quoted aliases
+      5. Use ORDER BY with numbers: ORDER BY 1 DESC, not ORDER BY alias_name DESC
+      6. Use appropriate LIMIT: LIMIT 5 for top/most queries, LIMIT 10 for lists, no LIMIT for counts
       7. For ticket statuses, use proper mapping:
         - "closed/completed/done" = status IN ('Done', 'Deployed', 'Ready For Release')
         - "open/pending/todo" = status IN ('To Do', 'BLOCKED', 'Need More Info')
         - "in progress/active" = status IN ('In Progress', 'Code Review', 'Testing')
 
-      Response Format (JSON only):
-      {"sql": "SELECT ...", "description": "Human description", "chart_type": "bar"}
+      EXAMPLE RESPONSES:
 
-      Chart types: "bar" for counts with categories, "pie" for distributions, "table" for lists/single values.
+      Simple query:
+      {"sql": "SELECT d.name, COUNT(pr.id) as pr_count FROM developers d JOIN pull_requests pr ON d.id = pr.developer_id WHERE pr.app_type = 'pioneer' AND d.app_type = 'pioneer' AND pr.merged_at >= NOW() - INTERVAL '1 month' AND pr.merged_at IS NOT NULL GROUP BY d.name ORDER BY 2 DESC LIMIT 5", "description": "Top 5 developers with most merged pull requests this month", "chart_type": "bar"}
+
+      Comparison query:
+      {"sql": "SELECT d.name, SUM(CASE WHEN c.committed_at >= '2025-01-01' AND c.committed_at < '2025-02-01' THEN 1 ELSE 0 END) as jan_commits, SUM(CASE WHEN c.committed_at >= '2025-03-01' AND c.committed_at < '2025-04-01' THEN 1 ELSE 0 END) as mar_commits FROM developers d JOIN commits c ON d.id = c.developer_id WHERE d.app_type = 'pioneer' AND c.app_type = 'pioneer' AND c.committed_at >= '2025-01-01' AND c.committed_at < '2025-04-01' GROUP BY d.name ORDER BY 2 + 3 DESC", "description": "Developer commit comparison between January and March 2025", "chart_type": "bar"}
+
+      Chart types: "bar" for rankings/counts, "pie" for distributions, "table" for lists.
+
+      Remember: Keep it simple, no complex SQL, exact JSON format only, use ORDER BY with numbers not aliases.
     BASE_PROMPT
 
     prompt_parts.join("\n")

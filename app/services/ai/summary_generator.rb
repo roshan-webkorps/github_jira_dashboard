@@ -44,16 +44,23 @@ module Ai
         Sample data (first 2 records):
         #{format_sample_data(results)}
 
-        Create a business-friendly summary that:
+        Create a POSITIVE, ENCOURAGING business-friendly summary that:
         1. **Explains what the data shows** in simple terms (avoid technical jargon)
-        2. **Highlights 2-3 key findings** that matter to team management
-        3. **Suggests 1-2 actionable improvements** based on the data
+        2. **Highlights 2-3 key successes** that matter to team management
+        3. **Frames any insights as growth opportunities** - never as problems or deficiencies
         4. **Keeps it concise** (maximum 3 sentences)
         5. **Uses plain English** - write as if explaining to a non-technical manager
 
-        Example tone: "John leads the team with 340 commits this week. Sarah and Mike have lighter workloads, suggesting they could take on more challenging tasks. Consider redistributing work to prevent John from burning out."
+        POSITIVE EXAMPLES:
+        ✅ "Sarah leads with 45 commits, showing excellent technical contribution"
+        ✅ "The team successfully delivered 23 features this month"
+        ✅ "Great opportunity to leverage top performers for mentoring"
 
-        Respond with JSON only: {"summary": "your business summary"}
+        AVOID NEGATIVE FRAMING:
+        ❌ "Low activity" → ✅ "Opportunities for increased engagement"
+        ❌ "Behind schedule" → ✅ "Building momentum toward goals"
+
+        Respond with JSON only: {"summary": "your positive business summary"}
       PROMPT
     end
 
