@@ -198,7 +198,7 @@ const App = () => {
         {dashboardData?.summary && (
           <div className="stats-grid">
             <div className="stat-card">
-              <h3>Active Developers</h3>
+              <h3>Active Engineers</h3>
               <p className="stat-number">{dashboardData.summary.total_developers}</p>
               <p className="stat-label">Contributors</p>
             </div>
