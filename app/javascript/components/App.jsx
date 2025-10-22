@@ -11,8 +11,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import AiChatModal from './AiChatModal'  // Updated chat component
-import chatApiService from './chatApiService'  // API service
+import AiChatModal from './AiChatModal'
+import chatApiService from './chatApiService'
 import {
   CommitActivityChart,
   CompletedTicketsChart,
@@ -40,6 +40,11 @@ ChartJS.register(
   Legend
 )
 
+const getAppUrl = (metaName, defaultUrl) => {
+  const meta = document.querySelector(`meta[name="${metaName}"]`)
+  return meta?.getAttribute('content') || defaultUrl
+}
+
 const App = () => {
   const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -47,7 +52,6 @@ const App = () => {
   const [timeframe, setTimeframe] = useState('24h')
   const [appType, setAppType] = useState('pioneer')
   
-  // AI Chat states - Updated for conversational interface
   const [isChatOpen, setIsChatOpen] = useState(false)
 
   const timeframeOptions = [
@@ -91,7 +95,6 @@ const App = () => {
     setAppType(newAppType)
   }
 
-  // AI Chat handlers - Updated for conversational interface
   const handleOpenChat = () => {
     setIsChatOpen(true)
   }
@@ -100,7 +103,6 @@ const App = () => {
     setIsChatOpen(false)
   }
 
-  // This function will be passed to the chat modal
   const handleChatQuery = async (query, chatService) => {
     try {
       const currentAppType = chatApiService.getCurrentAppType()
@@ -118,6 +120,9 @@ const App = () => {
       console.error('Failed to reset chat:', error)
     }
   }
+
+  const githubUrl = getAppUrl('github-app-url', 'http://localhost:3000')
+  const salesforceUrl = getAppUrl('salesforce-app-url', 'http://localhost:3002')
 
   if (loading) {
     return (
@@ -141,13 +146,23 @@ const App = () => {
 
   return (
     <div className="app">
+      <nav className="app-navigation">
+        <div className="nav-links">
+          <a href={githubUrl} className="nav-link active">
+            GitHub & Jira Analytics
+          </a>
+          <a href={salesforceUrl} className="nav-link">
+            Salesforce Analytics
+          </a>
+        </div>
+      </nav>
+
       <header className="app-header">
         <div className="header-content">
           <div className="header-text">
             <h1>GitHub & Jira Dashboard</h1>
           </div>
           
-          {/* AI Chat Button - Replaces search bar */}
           <div className="search-section">
             <button 
               className="open-chat-btn"
@@ -232,31 +247,26 @@ const App = () => {
         <div className="charts-section">
           <h2>Analytics Overview</h2>
           
-          {/* Row 1: Developer Activity - GitHub Focus */}
           <div className="charts-grid-two">
             <CommitActivityChart dashboardData={dashboardData} />
             <PullRequestActivityChart dashboardData={dashboardData} />
           </div>
 
-          {/* Row 2: Developer Activity - Jira Focus */}
           <div className="charts-grid-two">
             <CompletedTicketsChart dashboardData={dashboardData} />
             <TicketTypeCompletionChart dashboardData={dashboardData} />
           </div>
 
-          {/* Row 3: Ticket Analysis */}
           <div className="charts-grid-two">
             <TicketPriorityChart dashboardData={dashboardData} />
             <JiraTicketStatusChart dashboardData={dashboardData} />
           </div>
 
-          {/* Row 4: Timeline & Repository Insights */}
           <div className="charts-grid-two">
             <ActivityTimelineChart dashboardData={dashboardData} />
             <CommitsPerRepositoryChart dashboardData={dashboardData} />
           </div>
 
-          {/* Row 5: Conditional Charts based on app_type */}
           <div className="charts-grid-two">
             {appType === 'legacy' ? (
               <>
@@ -273,7 +283,6 @@ const App = () => {
         </div>
       </main>
       
-      {/* AI Chat Modal - Updated */}
       <AiChatModal
         isOpen={isChatOpen}
         onClose={handleCloseChat}
