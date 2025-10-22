@@ -25,7 +25,7 @@ class BaseJiraService
   def fetch_issues_paginated(project_key = nil, since = nil, start_at = 0, max_results = 100)
     jql = build_jql_query(project_key, since)
 
-    response = self.class.get("/rest/api/3/search", @options.merge(
+    response = self.class.get("/rest/api/3/search/jql", @options.merge(
       query: {
         jql: jql,
         startAt: start_at,
