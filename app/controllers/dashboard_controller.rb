@@ -13,7 +13,7 @@ class DashboardController < ApplicationController
   def api_data
     session.delete(:chat_service) if request.get? && request.path == "/api/dashboard"
 
-    timeframe = params[:timeframe] || "24h"
+    timeframe = params[:timeframe] || "1m"
     app_type = params[:app_type] || "pioneer"
     timeframe_start = calculate_timeframe_start(timeframe)
 
