@@ -3,11 +3,9 @@ class DashboardController < ApplicationController
 
   skip_before_action :verify_authenticity_token, only: [ :ai_query, :reset_chat ]
 
-  # Store chat services in session to maintain context during user session
   before_action :initialize_chat_service, only: [ :ai_query, :reset_chat ]
 
   def index
-    # Renders the main React app
   end
 
   def api_data
@@ -17,10 +15,8 @@ class DashboardController < ApplicationController
     app_type = params[:app_type] || "pioneer"
     timeframe_start = calculate_timeframe_start(timeframe)
 
-    # Extend with the appropriate analytics module
     extend get_analytics_module(app_type)
 
-    # Base charts that both app types have
     base_charts = {
       commits: get_commits_data(timeframe_start, timeframe),
       pull_requests: get_pull_requests_data(timeframe_start),
@@ -32,18 +28,14 @@ class DashboardController < ApplicationController
       ticket_type_completion: get_ticket_type_completion_data(timeframe_start)
     }
 
-    # Conditional charts based on app_type
     if app_type == "legacy"
-      # Legacy gets code impact charts instead of language distribution and PR status
       base_charts.merge!({
         code_impact_by_developer: get_code_impact_by_developer_data(timeframe_start),
         code_changes_by_developer_and_repo: get_code_changes_by_developer_and_repo_data(timeframe_start)
       })
     else
-      # Pioneer gets the original charts
       base_charts.merge!({
         language_distribution: get_language_distribution_data(timeframe_start)
-        # You can add PR status back if needed: pull_request_status: get_pr_status_data(timeframe_start)
       })
     end
 
@@ -58,10 +50,12 @@ class DashboardController < ApplicationController
     }
   end
 
-  # AI Query endpoint
   def ai_query
+    ip_address = request.remote_ip
     user_query = params[:query]
     app_type = params[:app_type] || "pioneer"
+
+    log_prompt_history(ip_address, app_type, user_query)
 
     if user_query.blank?
       render json: { error: "Query cannot be empty" }, status: 400
@@ -69,7 +63,6 @@ class DashboardController < ApplicationController
     end
 
     begin
-      # Process query with chat context using the updated processor
       result = process_bedrock_ai_query(user_query, app_type, @chat_service)
 
       render json: result
@@ -81,12 +74,9 @@ class DashboardController < ApplicationController
     end
   end
 
-  # New endpoint for resetting chat context
   def reset_chat
-    # Clear chat context for new topic
     session.delete(:chat_service)  # Change this line
     @chat_service = Ai::ChatService.new
-    # Don't serialize back to session immediately - let it be empty
 
     render json: { success: true, message: "Chat context reset" }
   end
@@ -144,6 +134,10 @@ class DashboardController < ApplicationController
     end
   end
 
+  def log_prompt_history(ip_address, app_type, prompt)
+    PromptHistory.create(ip_address:, app_type:, prompt:)
+  end
+
   def database_status
     ActiveRecord::Base.connection.execute("SELECT 1")
     "connected"
@@ -151,9 +145,8 @@ class DashboardController < ApplicationController
     "disconnected"
   end
 
-  # Chat service management methods
   def initialize_chat_service
-    if session[:chat_service] && !session[:chat_service].empty?  # Add empty check
+    if session[:chat_service] && !session[:chat_service].empty?
       @chat_service = deserialize_chat_service(session[:chat_service])
     else
       @chat_service = Ai::ChatService.new
@@ -163,9 +156,7 @@ class DashboardController < ApplicationController
     @chat_service = Ai::ChatService.new
   end
 
-  # Simple serialization for session storage
   def serialize_chat_service(chat_service)
-    # Store all context types but limit size
     context = chat_service.data_context || {}
     {
       developers: (context[:developers] || context["developers"] || []).first(3),
@@ -183,7 +174,6 @@ class DashboardController < ApplicationController
     chat_service
   end
 
-  # Update session after processing
   after_action :update_chat_session, only: [ :ai_query ]
 
   def update_chat_session

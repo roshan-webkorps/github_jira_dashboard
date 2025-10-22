@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_25_192822) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -46,6 +46,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_25_192822) do
     t.index ["github_username", "app_type"], name: "index_developers_on_github_username_and_app_type", unique: true
     t.index ["jira_username", "app_type"], name: "index_developers_on_jira_username_and_app_type", unique: true
     t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_developer_type"
+  end
+
+  create_table "prompt_histories", force: :cascade do |t|
+    t.string "ip_address", null: false
+    t.string "app_type", default: "legacy", null: false
+    t.text "prompt", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ip_address", "prompt"], name: "index_prompt_histories_on_ip_address_and_prompt", unique: true
   end
 
   create_table "pull_requests", force: :cascade do |t|
