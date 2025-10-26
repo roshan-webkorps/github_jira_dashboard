@@ -50,7 +50,7 @@ const App = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('1m')
-  const [appType, setAppType] = useState('legacy')
+  const [appType, setAppType] = useState('pioneer')
   
   const [isChatOpen, setIsChatOpen] = useState(false)
 
