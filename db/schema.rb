@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_25_195317) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "vector"
 
   create_table "commits", force: :cascade do |t|
     t.string "sha", null: false
@@ -30,7 +31,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
     t.index ["developer_id"], name: "index_commits_on_developer_id"
     t.index ["repository_id"], name: "index_commits_on_repository_id"
     t.index ["sha"], name: "index_commits_on_sha", unique: true
-    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_commit_type"
+    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying::text, 'pioneer'::character varying::text])", name: "check_commit_type"
   end
 
   create_table "developers", force: :cascade do |t|
@@ -45,8 +46,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
     t.index ["app_type"], name: "index_developers_on_app_type"
     t.index ["github_username", "app_type"], name: "index_developers_on_github_username_and_app_type", unique: true
     t.index ["jira_username", "app_type"], name: "index_developers_on_jira_username_and_app_type", unique: true
-    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_developer_type"
+    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying::text, 'pioneer'::character varying::text])", name: "check_developer_type"
   end
+
+# Could not dump table "doc_chunks" because of following StandardError
+#   Unknown type 'vector(1024)' for column 'embedding'
+
 
   create_table "prompt_histories", force: :cascade do |t|
     t.string "ip_address", null: false
@@ -77,7 +82,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
     t.index ["repository_id", "number"], name: "index_pull_requests_on_repository_id_and_number", unique: true
     t.index ["repository_id"], name: "index_pull_requests_on_repository_id"
     t.index ["state"], name: "index_pull_requests_on_state"
-    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_pull_request_type"
+    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying::text, 'pioneer'::character varying::text])", name: "check_pull_request_type"
   end
 
   create_table "repositories", force: :cascade do |t|
@@ -94,7 +99,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
     t.index ["app_type"], name: "index_repositories_on_app_type"
     t.index ["full_name"], name: "index_repositories_on_full_name", unique: true
     t.index ["github_id"], name: "index_repositories_on_github_id", unique: true
-    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_repository_type"
+    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying::text, 'pioneer'::character varying::text])", name: "check_repository_type"
   end
 
   create_table "tickets", force: :cascade do |t|
@@ -117,7 +122,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_22_142906) do
     t.index ["jira_id"], name: "index_tickets_on_jira_id", unique: true
     t.index ["key"], name: "index_tickets_on_key", unique: true
     t.index ["status"], name: "index_tickets_on_status"
-    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying, 'pioneer'::character varying]::text[])", name: "check_ticket_type"
+    t.check_constraint "app_type::text = ANY (ARRAY['legacy'::character varying::text, 'pioneer'::character varying::text])", name: "check_ticket_type"
   end
 
   add_foreign_key "commits", "developers"

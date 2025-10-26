@@ -63,7 +63,9 @@ class DashboardController < ApplicationController
     end
 
     begin
-      result = process_bedrock_ai_query(user_query, app_type, @chat_service)
+      # result = process_bedrock_ai_query(user_query, app_type, @chat_service)
+      processor = AiQueryProcessorWithTranscripts.new
+      result = processor.process_query_with_transcripts(user_query, app_type, @chat_service)
 
       render json: result
     rescue => e

@@ -1,10 +1,54 @@
+# app/services/ai/chat_service.rb
 module Ai
   class ChatService
-    attr_reader :conversation_history, :data_context
+    attr_reader :conversation_history, :data_context, :developer_analyses
 
     def initialize
       @conversation_history = []
       @data_context = {}
+      @developer_analyses = {}  # Store pre-computed analysis by developer name
+    end
+
+    # Store comprehensive developer analysis
+    def store_developer_analysis(developer_name, analysis_data)
+      return unless developer_name.present?
+      
+      @developer_analyses[normalize_name(developer_name)] = {
+        performance_summary: analysis_data[:performance_summary],
+        strengths: analysis_data[:strengths],
+        improvements: analysis_data[:improvements],
+        metrics: analysis_data[:metrics],
+        generated_at: Time.current
+      }
+      
+      Rails.logger.info "Stored analysis for #{developer_name}"
+    end
+
+    # Retrieve stored developer analysis
+    def get_developer_analysis(developer_name, analysis_type = nil)
+      return nil unless developer_name.present?
+      
+      analysis = @developer_analyses[normalize_name(developer_name)]
+      return nil unless analysis
+      
+      case analysis_type
+      when :improvements
+        analysis[:improvements]
+      when :strengths
+        analysis[:strengths]
+      when :summary
+        analysis[:performance_summary]
+      when :metrics
+        analysis[:metrics]
+      else
+        analysis  # Return full analysis
+      end
+    end
+
+    # Check if we have analysis for a developer
+    def has_analysis_for?(developer_name)
+      return false unless developer_name.present?
+      @developer_analyses.key?(normalize_name(developer_name))
     end
 
     def add_exchange(user_query, ai_response, query_results = nil)
@@ -14,14 +58,11 @@ module Ai
         timestamp: Time.current
       }
 
-      # Extract data context from results for future reference
       if query_results && query_results[:success]
         update_data_context(query_results)
       end
 
       @conversation_history << exchange
-
-      # Keep only last 3 exchanges to manage context window
       @conversation_history = @conversation_history.last(3)
     end
 
@@ -55,6 +96,7 @@ module Ai
     def clear_context
       @conversation_history = []
       @data_context = {}
+      @developer_analyses = {}
     end
 
     def has_context?
@@ -73,7 +115,31 @@ module Ai
       @conversation_history = @conversation_history.last(3)
     end
 
+    # Serialize to session
+    def to_session_data
+      {
+        conversation_history: @conversation_history,
+        data_context: @data_context,
+        developer_analyses: @developer_analyses
+      }
+    end
+
+    # Restore from session
+    def restore_from_session(session_data)
+      return unless session_data.is_a?(Hash)
+      
+      @conversation_history = session_data[:conversation_history] || []
+      @data_context = session_data[:data_context] || {}
+      @developer_analyses = session_data[:developer_analyses] || {}
+      
+      Rails.logger.info "Restored chat service: #{@developer_analyses.keys.length} analyses, #{@conversation_history.length} exchanges"
+    end
+
     private
+
+    def normalize_name(name)
+      name.to_s.downcase.strip
+    end
 
     def update_data_context(query_results)
       return unless query_results[:raw_results]&.any?
@@ -81,10 +147,12 @@ module Ai
       results = query_results[:raw_results]
       first_row = results.first
 
-      # Extract developers
-      if first_row.key?("name") || first_row.key?("developer_name")
-        developer_names = results.map { |row| row["name"] || row["developer_name"] }.compact.uniq
-        @data_context[:developers] = developer_names.first(5) if developer_names.any? # Limit to 5
+      # Extract developers (including 'developer' key from SQL results)
+      if first_row.key?("name") || first_row.key?("developer_name") || first_row.key?("developer")
+        developer_names = results.map { |row| 
+          row["name"] || row["developer_name"] || row["developer"] 
+        }.compact.uniq
+        @data_context[:developers] = developer_names.first(5) if developer_names.any?
       end
 
       # Extract repositories
@@ -104,12 +172,6 @@ module Ai
         pr_info = results.map { |row| "PR #{row['number']}" || row["pr_title"] }.compact.uniq
         @data_context[:pull_requests] = pr_info.first(5) if pr_info.any?
       end
-    end
-
-    def clean_developer_name(name)
-      # Remove common suffixes that might indicate source system
-      cleaned = name.to_s.gsub(/[-_](ap|jira|github)$/i, "")
-      cleaned.strip
     end
   end
 end
