@@ -1099,18 +1099,23 @@ body {
   font-size: 1.1rem;
 }
 
-.ai-summary {
+/* .ai-summary {
   margin-top: 1rem;
   padding: 1rem;
   background: #e8f4f8;
   border-left: 4px solid #3498db;
   border-radius: 0 8px 8px 0;
-}
+} */
 
 .ai-summary .summary-content p {
   margin: 0;
   color: #495057;
   line-height: 1.5;
+}
+
+.summary-content {
+  padding: 0;
+  background: transparent;
 }
 
 .result-count {

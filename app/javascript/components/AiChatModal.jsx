@@ -192,7 +192,28 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
     const paragraphs = text.split(/\n\s*\n/);
     
     return paragraphs.map((paragraph, pIndex) => {
-      const lines = paragraph.split('\n').filter(line => line.trim());
+      const trimmed = paragraph.trim();
+      const lines = trimmed.split('\n').filter(line => line.trim());
+      
+      // Check for section headers (Strengths:, Improvements:, etc.)
+      if (trimmed.match(/^(Strengths|Improvements|Summary Table):/i)) {
+        const [header, ...content] = trimmed.split(/:\s*/);
+        return (
+          <div key={pIndex} style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ 
+              fontWeight: 'bold', 
+              marginBottom: '0.5rem',
+              fontSize: '1rem',
+              color: '#1f2937'
+            }}>
+              {header}:
+            </h4>
+            <div style={{ paddingLeft: '0.5rem' }}>
+              {formatContent(content.join(': '))}
+            </div>
+          </div>
+        );
+      }
       
       // Check if this paragraph contains a numbered list
       const hasNumbers = lines.some(line => /^\d+\.\s/.test(line.trim()));
@@ -229,14 +250,23 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
           </ol>
         );
       } else {
-        // Regular paragraph
+        // Regular paragraph - render with markdown support
         return (
           <p key={pIndex} style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
-            {renderMarkdown(paragraph.trim())}
+            {renderMarkdown(trimmed)}
           </p>
         );
       }
     });
+  };
+
+  const formatContent = (text) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    return lines.map((line, index) => (
+      <p key={index} style={{ marginBottom: '0.5rem', lineHeight: '1.5' }}>
+        {renderMarkdown(line.trim())}
+      </p>
+    ));
   };
 
   const renderMarkdown = (text) => {
@@ -323,21 +353,14 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
             renderChart(content.data, content.chart_type)
           }
 
-          {content.summary && (
-            <div className="ai-summary">
-              <div className="summary-content">
-                {formatTextResponse(content.summary)}
-              </div>
-            </div>
-          )}
-
-          {content.raw_results && (
-            <div className="result-count">
-              <small>
-                Found {content.raw_results.length} result{content.raw_results.length !== 1 ? 's' : ''}
-              </small>
-            </div>
-          )}
+        {content.summary && (
+          <div className="summary-content" style={{ 
+            background: 'transparent',
+            padding: 0
+          }}>
+            {formatTextResponse(content.summary)}
+          </div>
+        )}
         </div>
         <div className="message-time">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
