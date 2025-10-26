@@ -50,7 +50,7 @@ const App = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('1m')
-  const [appType, setAppType] = useState('pioneer')
+  const [appType, setAppType] = useState('legacy')
   
   const [isChatOpen, setIsChatOpen] = useState(false)
 
@@ -212,12 +212,6 @@ const App = () => {
       <main className="app-main">
         {dashboardData?.summary && (
           <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Active Engineers</h3>
-              <p className="stat-number">{dashboardData.summary.total_developers}</p>
-              <p className="stat-label">Contributors</p>
-            </div>
-            
             <div className="stat-card">
               <h3>Repositories</h3>
               <p className="stat-number">{dashboardData.summary.total_repositories}</p>

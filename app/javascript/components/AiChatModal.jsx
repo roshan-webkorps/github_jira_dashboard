@@ -223,7 +223,7 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
           <ol key={pIndex} style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }}>
             {listItems.map((item, index) => (
               <li key={index} style={{ marginBottom: '0.5rem', lineHeight: '1.5' }}>
-                {item}
+                {renderMarkdown(item)}
               </li>
             ))}
           </ol>
@@ -232,10 +232,24 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
         // Regular paragraph
         return (
           <p key={pIndex} style={{ marginBottom: '1rem', lineHeight: '1.5' }}>
-            {paragraph.trim()}
+            {renderMarkdown(paragraph.trim())}
           </p>
         );
       }
+    });
+  };
+
+  const renderMarkdown = (text) => {
+    // Split by **bold** markers
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    
+    return parts.map((part, index) => {
+      // Check if this part is wrapped in **
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const boldText = part.slice(2, -2); // Remove ** from both ends
+        return <strong key={index}>{boldText}</strong>;
+      }
+      return <span key={index}>{part}</span>;
     });
   };
 
@@ -312,7 +326,7 @@ const AiChatModal = ({ isOpen, onClose, onQuery, onNewTopic }) => {
           {content.summary && (
             <div className="ai-summary">
               <div className="summary-content">
-                <p>{content.summary}</p>
+                {formatTextResponse(content.summary)}
               </div>
             </div>
           )}
