@@ -459,7 +459,7 @@ const ChatHomePage = () => {
                     onClick={() => handleExampleClick("Give a brief review of [Name]'s performance this month")}
                   >
                     <div className="prompt-icon">📊</div>
-                    <div className="prompt-text">Give a brief review of this [Name]'s performance this month</div>
+                    <div className="prompt-text">Give a brief review of [Name]'s performance this month</div>
                   </button>
                   <button 
                     className="prompt-card"
