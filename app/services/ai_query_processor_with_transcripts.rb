@@ -347,6 +347,7 @@ class AiQueryProcessorWithTranscripts
       
       ANALYSIS GUIDELINES:
       - Combine quantitative metrics with qualitative context from meetings
+      - DO NOT add the metric in response if the value is 0 (e.g., 0 tickts finished, 0 pull requests created etc)
       - If you see the same person with different usernames (e.g., "swapnil-ap" and "Swapnil Bhosale"), aggregate their metrics mentally
       - Focus on strengths, achievements, and positive contributions
       - Frame any areas for improvement constructively and supportively
@@ -356,16 +357,15 @@ class AiQueryProcessorWithTranscripts
       - Default to optimistic interpretation when data is ambiguous
       
       TONE REQUIREMENTS:
-      - Maintain a predominantly positive and encouraging tone (80% positive, 20% constructive)
+      - Maintain a predominantly positive tone (100% positive, 0% constructive/negative)
       - Start with accomplishments and strong points
-      - Frame challenges as "opportunities for growth" not "weaknesses"
       - End on an uplifting or forward-looking note
       - Keep it brief - if you can't fit it in 3 short paragraphs, it's not essential
       - Use phrases like "demonstrates", "shows capability", "actively contributing" rather than negative framing
 
       STRUCTURE:
-      Paragraph 1: Meeting insights and notable contributions (2-3 sentences)
-      Paragraph 2: Key metrics and what they show (2-3 sentences, use **bold** for numbers)
+      Paragraph 1: Meeting insights and notable contributions (2-3 sentences, mention source as "Otter", use **bold** for source)
+      Paragraph 2: Key metrics and what they show (2-3 sentences, mention source as "Github and Jira", use **bold** for source and numbers)
       Paragraph 3: Growth opportunities or forward-looking statement (1-2 sentences)
       ```
       
