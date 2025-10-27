@@ -69,6 +69,8 @@ class AiQueryProcessorWithTranscripts
       # Pass the original developer name for transcript filtering
       list_format = user_wants_list_format?(user_query)
 
+      Rails.logger.info("List Format: #{list_format}")
+
       final_response = generate_final_response_with_data(
         user_query,
         sql_results,
@@ -115,8 +117,8 @@ class AiQueryProcessorWithTranscripts
   private
 
   def user_wants_list_format?(query)
-    list_keywords = /\b(list|top|rank|who are|show me|give me)\s+(the\s+)?\d+|top\s+\d+|best\s+\d+|most\s+\w+\s+devs?/i
-    query.match?(list_keywords)
+    pattern = /\b(list|top|rank|ranking|most|best|show me|give me|who are|which are)\b/i
+    query.match?(pattern)
   end
 
   # Extract developer name from the original query
