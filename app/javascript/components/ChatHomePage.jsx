@@ -188,31 +188,32 @@ const ChatHomePage = () => {
       
       if (hasNumbers) {
         const listItems = []
-        let currentItem = ''
         
         lines.forEach(line => {
           const trimmed = line.trim()
           const numberMatch = trimmed.match(/^(\d+)\.\s(.+)/)
           
           if (numberMatch) {
-            if (currentItem) {
-              listItems.push(currentItem)
+            const number = parseInt(numberMatch[1])
+            const text = numberMatch[2]
+            
+            // Check if this continues a previous item
+            if (listItems.length > 0 && number === listItems[listItems.length - 1].number) {
+              listItems[listItems.length - 1].text += ' ' + text
+            } else {
+              listItems.push({ number, text })
             }
-            currentItem = numberMatch[2]
-          } else if (trimmed && currentItem) {
-            currentItem += ' ' + trimmed
+          } else if (trimmed && listItems.length > 0) {
+            // Continuation line without number
+            listItems[listItems.length - 1].text += ' ' + trimmed
           }
         })
-        
-        if (currentItem) {
-          listItems.push(currentItem)
-        }
         
         return (
           <ol key={pIndex} style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }}>
             {listItems.map((item, index) => (
-              <li key={index} style={{ marginBottom: '0.5rem', lineHeight: '1.5' }}>
-                {renderMarkdown(item)}
+              <li key={index} value={item.number} style={{ marginBottom: '0.5rem', lineHeight: '1.5' }}>
+                {renderMarkdown(item.text)}
               </li>
             ))}
           </ol>
