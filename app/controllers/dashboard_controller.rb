@@ -8,6 +8,10 @@ class DashboardController < ApplicationController
   def index
   end
 
+  def chat_home
+    render layout: 'chat'
+  end
+
   def api_data
     session.delete(:chat_service) if request.get? && request.path == "/api/dashboard"
 

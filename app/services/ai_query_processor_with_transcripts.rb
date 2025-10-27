@@ -242,6 +242,9 @@ class AiQueryProcessorWithTranscripts
       5. Default time range: last 1 month (unless user specifies otherwise)
       6. Use COALESCE for nullable aggregations
       7. Use ILIKE for case-insensitive name matching
+      8. If the app type is 'pioneer' then ignore the 'additions' and 'deletions' columns from the 'commits' table
+      9. In ORDER BY: use the full aggregate function (COUNT(c.id)), NOT column aliases (total_commits)
+
 
       TRANSCRIPT SEARCH:
       - Include a "transcript_query" field with 2-4 relevant keywords to search meeting transcripts
@@ -274,7 +277,7 @@ class AiQueryProcessorWithTranscripts
       This aggregates all their activity across different usernames (GitHub vs JIRA).
       
       CRITICAL: When returning metrics for a specific developer, use a static string for their name in SELECT (not d.name).
-      This ensures all their activity is aggregated under one name, not split by account variations.
+      This ensures all their activity is aggregated under one name, not split by account variations (e.g., if user says "Krishna", use 'Krishna' not 'Krishna Teja').
       
       For top developers by commits:
       SELECT 
@@ -285,7 +288,28 @@ class AiQueryProcessorWithTranscripts
       WHERE d.app_type = '#{app_type}'
         AND c.committed_at >= NOW() - INTERVAL '1 month'
       GROUP BY d.name
-      ORDER BY total_commits DESC
+      ORDER BY COUNT(c.id) DESC
+      LIMIT 5
+
+      For top contributors (multiple metrics):
+      SELECT 
+        d.name as developer,
+        COUNT(DISTINCT c.id) as commits,
+        COUNT(DISTINCT pr.id) as pull_requests,
+        COUNT(DISTINCT t.id) as tickets
+      FROM developers d
+      LEFT JOIN commits c ON d.id = c.developer_id 
+        AND c.app_type = '#{app_type}'
+        AND c.committed_at >= NOW() - INTERVAL '1 month'
+      LEFT JOIN pull_requests pr ON d.id = pr.developer_id 
+        AND pr.app_type = '#{app_type}'
+        AND pr.opened_at >= NOW() - INTERVAL '1 month'
+      LEFT JOIN tickets t ON d.id = t.developer_id 
+        AND t.app_type = '#{app_type}'
+        AND t.created_at_jira >= NOW() - INTERVAL '1 month'
+      WHERE d.app_type = '#{app_type}'
+      GROUP BY d.name
+      ORDER BY COUNT(DISTINCT c.id) + COUNT(DISTINCT pr.id) + COUNT(DISTINCT t.id) DESC
       LIMIT 5
       
       Respond with ONLY the JSON object. Nothing before {, nothing after }.

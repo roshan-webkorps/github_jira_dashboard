@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   # Root route - serves the React app
-  root "dashboard#index"
+  # root "dashboard#index"
+  root 'dashboard#chat_home'
 
   # Simple API routes
   get "api/dashboard", to: "dashboard#api_data"
