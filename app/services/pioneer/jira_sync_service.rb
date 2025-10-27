@@ -33,7 +33,12 @@ class Pioneer::JiraSyncService < BaseJiraSyncService
       "5f46ee1b347294003e7435bd", # mehul
       "631eda46cf721d09b015b8ed", # Gaurav Patil
       "712020:64eb99e1-a6e1-43de-b960-04ed0ef79148", # sagar pithiya
-      "63216307f8c7bc1f35837f67" # rohitmahajan
+      "63216307f8c7bc1f35837f67", # rohitmahajan
+      "712020:e9bc05ff-a361-4448-b1fe-a21f89ee3588", # Abhishek Patidar
+      "712020:a543b715-8d66-4d7c-823d-4d44f2aee9a8", # Aniket Shinde
+      "712020:edf1b4ef-8ed0-4c65-86ff-745c78999dcb", # Mohit Jangid 
+      "5f46ed831ac29c004525b36f", # Parakh Garg
+      "712020:edd73c8b-3c5d-43e2-be1a-5ba67514f80a" # Vishal Paliwal
     ]
   end
 end

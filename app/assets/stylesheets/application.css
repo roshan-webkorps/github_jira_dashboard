@@ -1636,16 +1636,23 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 2rem;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 200px 1fr 200px; /* Fixed width columns on sides, flexible center */
   align-items: center;
   height: 64px;
+  gap: 2rem;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  justify-content: flex-start;
+}
+
+.nav-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-logo {
@@ -1653,6 +1660,7 @@ body {
   font-weight: 700;
   color: #1e293b;
   margin: 0;
+  white-space: nowrap;
 }
 
 .nav-tabs {
@@ -1692,35 +1700,35 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
+  justify-content: flex-end;
+  min-width: 0; /* Allow flex items to shrink */
 }
 
 .app-type-dropdown {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  white-space: nowrap;
 }
 
 .app-type-dropdown label {
   font-size: 0.875rem;
-  font-weight: 500;
   color: #64748b;
+  font-weight: 500;
 }
 
 .app-type-dropdown select {
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  padding: 0.5rem 2rem 0.5rem 1rem;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: #334155;
-  background: white;
+  background-color: white;
   cursor: pointer;
-  outline: none;
-  transition: all 0.2s;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.5rem center;
+  background-position: right 0.75rem center;
+  min-width: 120px;
 }
 
 .app-type-dropdown select:hover {
@@ -1736,23 +1744,24 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #0ea5e9;
+  padding: 0.625rem 1.25rem;
+  background-color: #0ea5e9;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .new-chat-button:hover:not(:disabled) {
-  background: #0284c7;
+  background-color: #0284c7;
 }
 
 .new-chat-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

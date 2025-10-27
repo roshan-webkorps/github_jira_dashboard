@@ -364,8 +364,8 @@ class AiQueryProcessorWithTranscripts
       - Use phrases like "demonstrates", "shows capability", "actively contributing" rather than negative framing
 
       STRUCTURE:
-      Paragraph 1: Key metrics and what they show (2-3 sentences, use **bold** for numbers)
-      Paragraph 2: Meeting insights and notable contributions (2-3 sentences)
+      Paragraph 1: Meeting insights and notable contributions (2-3 sentences)
+      Paragraph 2: Key metrics and what they show (2-3 sentences, use **bold** for numbers)
       Paragraph 3: Growth opportunities or forward-looking statement (1-2 sentences)
       ```
       

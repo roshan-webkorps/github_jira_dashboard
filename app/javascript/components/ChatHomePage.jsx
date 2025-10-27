@@ -367,7 +367,10 @@ const ChatHomePage = () => {
       <nav className="chat-nav">
         <div className="chat-nav-content">
           <div className="nav-left">
-            <h1 className="nav-logo">Analytics AI</h1>
+            <h1 className="nav-logo">Asset Panda AI Chat</h1>
+          </div>
+          
+          <div className="nav-center">
             <div className="nav-tabs">
               <a href={githubUrl} className="nav-tab active">
                 <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor">
@@ -377,8 +380,7 @@ const ChatHomePage = () => {
               </a>
               <a href={salesforceUrl} className="nav-tab">
                 <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8.5 11.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 1 0v7a.5.5 0 0 1-.5.5z"/>
-                  <path d="M4 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4zm0-1h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+                  <path d="M11.473 6.07a2.7 2.7 0 00-2.584-1.76c-.935 0-1.742.49-2.18 1.23a2.09 2.09 0 00-.556-.07 2.66 2.66 0 00-2.653 2.655c0 .17.017.34.05.5A2.63 2.63 0 002.67 12h7.94a2.75 2.75 0 001.15-5.27 2.56 2.56 0 00-.287-.66z"/>
                 </svg>
                 Salesforce Analytics
               </a>
@@ -428,7 +430,7 @@ const ChatHomePage = () => {
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                   </svg>
                 </div>
-                <h1 className="welcome-title">Unified Engineering Intelligence</h1>
+                <h1 className="welcome-title">Asset Panda Engineering Intelligence</h1>
                 <p className="welcome-description">
                   Ask questions about your team’s performance, commits, meetings, and tickets — all in one place.
                 </p>
@@ -453,17 +455,17 @@ const ChatHomePage = () => {
                 <div className="prompts-grid">
                   <button 
                     className="prompt-card"
-                    onClick={() => handleExampleClick("How was the performance of our team last month?")}
+                    onClick={() => handleExampleClick("Give a brief review of Ayush's performance this month")}
                   >
                     <div className="prompt-icon">📊</div>
-                    <div className="prompt-text">How was the performance of our team last month?</div>
+                    <div className="prompt-text">Give a brief review of this Ayush's performance this month</div>
                   </button>
                   <button 
                     className="prompt-card"
-                    onClick={() => handleExampleClick("Show me the top contributors")}
+                    onClick={() => handleExampleClick("Show me the top contributors by commits")}
                   >
-                    <div className="prompt-icon">👥</div>
-                    <div className="prompt-text">Show me the top contributors</div>
+                    <div className="prompt-icon">🏆</div>
+                    <div className="prompt-text">Show me the top contributors by commits</div>
                   </button>
                   <button 
                     className="prompt-card"
