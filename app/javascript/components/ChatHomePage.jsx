@@ -456,10 +456,10 @@ const ChatHomePage = () => {
                 <div className="prompts-grid">
                   <button 
                     className="prompt-card"
-                    onClick={() => handleExampleClick("Give a brief review of Ayush's performance this month")}
+                    onClick={() => handleExampleClick("Give a brief review of [Name]'s performance this month")}
                   >
                     <div className="prompt-icon">📊</div>
-                    <div className="prompt-text">Give a brief review of this Ayush's performance this month</div>
+                    <div className="prompt-text">Give a brief review of this [Name]'s performance this month</div>
                   </button>
                   <button 
                     className="prompt-card"
