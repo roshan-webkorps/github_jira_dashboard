@@ -428,9 +428,9 @@ const ChatHomePage = () => {
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                   </svg>
                 </div>
-                <h1 className="welcome-title">Ask about your GitHub & Jira data</h1>
+                <h1 className="welcome-title">Unified Engineering Intelligence</h1>
                 <p className="welcome-description">
-                  Get instant insights about your team's activity, commits, pull requests, tickets, and performance metrics.
+                  Ask questions about your team’s performance, commits, meetings, and tickets — all in one place.
                 </p>
               </div>
 
